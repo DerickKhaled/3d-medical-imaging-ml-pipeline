@@ -1,15 +1,16 @@
-# Demo experiment: small 3D U-Net on the hippocampus dataset. ~10 min on a laptop CPU.
+# Demo experiment: small 3D U-Net (~350k parameters) on the hippocampus dataset.
+# ~35 min on a 14-core laptop CPU (measured: ~2 s per batch of 4); a few minutes on a GPU.
 data_config: configs/data.yaml
 preprocessing_config: configs/preprocessing.yaml
 model:
   name: unet3d
   in_channels: 1
   num_classes: 3
-  base_channels: 16
+  base_channels: 8
   depth: 3
 training:
   seed: 42
-  epochs: 25
+  epochs: 20
   batch_size: 4
   learning_rate: 0.002
   weight_decay: 0.00001

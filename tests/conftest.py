@@ -35,3 +35,11 @@ def preprocessing_config() -> PreprocessingConfig:
 @pytest.fixture
 def artifact_paths(tmp_path: Path) -> ArtifactPaths:
     return ArtifactPaths(tmp_path / "artifacts")
+
+
+@pytest.fixture(scope="session")
+def pipeline_run(tmp_path_factory: pytest.TempPathFactory):  # type: ignore[no-untyped-def]
+    """Train -> register -> evaluate -> promote -> infer -> mesh, once per test session."""
+    from .pipeline_fixture import run_pipeline
+
+    return run_pipeline(tmp_path_factory.mktemp("pipeline"))

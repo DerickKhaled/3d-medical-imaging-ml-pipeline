@@ -1,0 +1,4 @@
+# Relaxed gate for the synthetic smoke pipeline (proves the mechanics, not model quality).
+required_split: test
+min_mean_dice: 0.0
+min_cases: 1
