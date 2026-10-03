@@ -46,9 +46,9 @@ def mask_to_mesh(
     origin = np.asarray(reference.GetOrigin())
     physical = origin + (index_xyz * spacing) @ direction.T
 
-    # Reordering axes (z,y,x)->(x,y,z) is a reflection, as may be the scan direction
-    # matrix. A reflection turns triangles inside out, so restore outward-facing winding.
-    if -np.linalg.det(direction) < 0:
+    # A scan direction matrix with a reflection (negative determinant) turns triangles
+    # inside out; restore outward-facing winding (verified by the sphere-volume test).
+    if np.linalg.det(direction) < 0:
         faces = faces[:, ::-1]
 
     mesh = trimesh.Trimesh(vertices=physical, faces=faces, process=True)

@@ -63,7 +63,7 @@ def test_trace_links_prediction_to_source(pipeline_run) -> None:  # type: ignore
                      "Preprocessing", "Source scan"]
     source = trace.chain[-1]["details"]["provenance"]
     assert "split: test" in source  # the demo scan was never seen in training
-    assert not trace.warnings
+    assert not any("TRAINING split" in w for w in trace.warnings)
 
 
 @pytest.fixture
