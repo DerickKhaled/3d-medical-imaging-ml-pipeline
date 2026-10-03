@@ -1,0 +1,4 @@
+# Release gate: the evidence a candidate model needs before promotion to 'validated'.
+required_split: test
+min_mean_dice: 0.80
+min_cases: 20

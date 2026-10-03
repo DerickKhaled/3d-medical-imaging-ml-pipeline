@@ -1,0 +1,3 @@
+formats: [stl, ply, obj]
+smoothing_iterations: 15     # Taubin smoothing: removes voxel staircase without shrinking the surface
+marching_cubes_step: 1

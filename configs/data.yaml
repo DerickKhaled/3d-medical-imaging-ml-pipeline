@@ -1,0 +1,20 @@
+# Medical Segmentation Decathlon, Task04 Hippocampus (MRI, CC-BY-SA 4.0).
+# Download with: python -m src.data.download --out data
+name: msd-hippocampus
+root: data/Task04_Hippocampus
+images_dir: imagesTr
+labels_dir: labelsTr
+modality: MRI
+class_names:
+  0: background
+  1: anterior_hippocampus
+  2: posterior_hippocampus
+split:
+  val_fraction: 0.15
+  test_fraction: 0.15
+  seed: 42
+limits:                     # inputs outside these limits are rejected, at ingestion and at inference
+  min_size_xyz: [16, 16, 16]
+  max_voxels: 2000000
+  min_spacing_mm: 0.3
+  max_spacing_mm: 5.0

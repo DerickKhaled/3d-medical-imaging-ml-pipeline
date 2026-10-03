@@ -1,0 +1,26 @@
+# Demo experiment: small 3D U-Net on the hippocampus dataset. ~10 min on a laptop CPU.
+data_config: configs/data.yaml
+preprocessing_config: configs/preprocessing.yaml
+model:
+  name: unet3d
+  in_channels: 1
+  num_classes: 3
+  base_channels: 16
+  depth: 3
+training:
+  seed: 42
+  epochs: 25
+  batch_size: 4
+  learning_rate: 0.002
+  weight_decay: 0.00001
+  num_workers: 0
+  device: auto              # auto = CUDA if available, else CPU
+  amp: true                 # mixed precision, only applied on CUDA
+  max_train_samples: null
+  augmentation:
+    flip_axes_xyz: [0]      # left-right flip only: anterior/posterior labels depend on the A-P axis
+    intensity_scale: 0.1
+    intensity_shift: 0.1
+    noise_std: 0.05
+postprocessing:
+  keep_largest_component: true

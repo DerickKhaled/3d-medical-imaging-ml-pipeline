@@ -1,0 +1,26 @@
+# Seconds-long training run used by tests and CI. Proves the pipeline runs, not that the model is good.
+data_config: configs/smoke/data.yaml
+preprocessing_config: configs/smoke/preprocessing.yaml
+model:
+  name: unet3d
+  in_channels: 1
+  num_classes: 3
+  base_channels: 4
+  depth: 2
+training:
+  seed: 0
+  epochs: 2
+  batch_size: 2
+  learning_rate: 0.01
+  weight_decay: 0.0
+  num_workers: 0
+  device: cpu
+  amp: false
+  max_train_samples: null
+  augmentation:
+    flip_axes_xyz: [0]
+    intensity_scale: 0.1
+    intensity_shift: 0.1
+    noise_std: 0.05
+postprocessing:
+  keep_largest_component: true

@@ -1,0 +1,9 @@
+name: synthetic
+orientation: RAS
+target_spacing_mm: [1.0, 1.0, 1.0]
+intensity:
+  mode: zscore
+  clip_percentiles: [0.5, 99.5]
+  ct_window_level: null
+  ct_window_width: null
+crop_or_pad_size_xyz: [32, 40, 32]   # synthetic scans are 28-33 x 36-41 x 28-33: exercises crop and pad

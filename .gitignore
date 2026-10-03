@@ -1,0 +1,15 @@
+# environments
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# data and generated artifacts are never committed (data licences, size, patient privacy)
+data/
+artifacts/
+artifacts_*/
+*.nii
+*.nii.gz
+*.pt

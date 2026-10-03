@@ -1,0 +1,19 @@
+# Synthetic dataset for tests and CI: python -m src.data.synthetic --out data/synthetic
+name: synthetic
+root: data/synthetic
+images_dir: imagesTr
+labels_dir: labelsTr
+modality: MRI
+class_names:
+  0: background
+  1: anterior_hippocampus
+  2: posterior_hippocampus
+split:
+  val_fraction: 0.2
+  test_fraction: 0.2
+  seed: 0
+limits:
+  min_size_xyz: [16, 16, 16]
+  max_voxels: 2000000
+  min_spacing_mm: 0.3
+  max_spacing_mm: 5.0

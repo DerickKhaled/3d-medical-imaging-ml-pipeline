@@ -1,0 +1,11 @@
+# The preprocessing version is derived from the content of this file:
+# changing any value produces a new preprocessing_version automatically.
+name: hippo-mri
+orientation: RAS
+target_spacing_mm: [1.0, 1.0, 1.0]
+intensity:
+  mode: zscore              # MRI has no absolute intensity scale -> per-volume z-score
+  clip_percentiles: [0.5, 99.5]
+  ct_window_level: null     # used only when mode: ct_window (CT, Hounsfield units)
+  ct_window_width: null
+crop_or_pad_size_xyz: [48, 64, 48]   # largest scan is 43x59x47 -> padding only, no anatomy is cropped
