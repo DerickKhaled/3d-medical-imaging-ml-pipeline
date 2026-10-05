@@ -7,6 +7,7 @@ import SimpleITK as sitk
 
 from src.config import MeshConfig
 from src.reconstruction.mesh import mask_to_mesh
+from src.visualization.scene import load_case
 
 MESH = MeshConfig(
     formats=["stl"],
@@ -15,7 +16,6 @@ MESH = MeshConfig(
     smoothing_iterations=10,
     marching_cubes_step=1,
 )
-from src.visualization.scene import load_case
 
 
 def _sphere(radius_vox: float, size: int = 40) -> np.ndarray:

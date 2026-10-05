@@ -33,9 +33,10 @@ class CaseScene:
 
     def summary_lines(self) -> list[str]:
         r = self.record
+        size = "x".join(map(str, r["input_size_xyz"]))
         lines = [
             f"Result ID        {self.inference_id}",
-            f"Scan             {r['input_name']}  ({'x'.join(map(str, r['input_size_xyz']))} voxels)",
+            f"Scan             {r['input_name']}  ({size} voxels)",
             f"Model            {r['model_version']}  ({r['model_status_at_inference']})",
             f"Trained in       {r['experiment_id']}",
             f"Training data    {r['dataset_version']}",
