@@ -1,72 +1,67 @@
-# Engineering for regulated medical ML: notes on this architecture
+# Notes on regulated medical software
 
-> **This project is not compliant with any standard and makes no regulatory claim.**
-> This engineering architecture can support a regulated development process, but
-> compliance additionally requires organizational processes, documentation,
-> validation, risk management and quality-system controls.
+First, to be clear: this project is not compliant with any standard, and I don't claim it
+is. Compliance needs a lot more than code: a quality system, written processes, risk
+management, clinical validation and documentation.
 
-The point of these notes is to show *which engineering decisions make a
-regulated process cheaper and safer later*. Retrofitting traceability into an
-ML system that was built without it is usually more expensive than building it
-in from the start.
+What code *can* do is make that work much easier. If a system was built without
+traceability, adding it later is painful. So I built it in from the start.
 
-## Principles and where they live in the code
+## What the project already does
 
-| Principle | What it means in practice | Where in this repo |
-|---|---|---|
-| **Traceability** | Every output can be followed back to its inputs, code and decisions | `src/lineage/trace.py` walks prediction → model → evaluation → experiment → dataset → preprocessing → source scan, and **re-hashes** every link |
-| **Reproducibility** | Same inputs + same code + same config → same result | fixed seeds, deterministic kernels, seed-derived augmentation (`src/training/dataset.py`), content-hashed preprocessing; `tests/test_model_training.py::test_training_is_reproducible` asserts identical weights across two runs |
-| **Dataset lineage** | Know exactly which scans trained/validated/tested a model | `src/data/manifest.py`: `dataset_version` = hash of scans, labels and split; hash-based split never moves a test scan into training when data is added |
-| **Model lineage** | Know exactly which checkpoint is deployed and where it came from | registry copies the checkpoint, stores its SHA-256, and verifies it on every load (`src/models/checkpoint.py`) |
-| **Controlled releases** | A model reaches production only through an explicit, evidenced decision | `src/registry/model_registry.py`: candidate → validated (release gate from `configs/release.yaml`) → production; written reason required; history of who/when/why |
-| **Change control** | Any change produces a new, distinguishable version | versions are immutable; preprocessing version is derived from config content; a changed scan changes the dataset version |
-| **Software verification** | Each unit does what it specifies | `tests/`: 60+ tests incl. metric edge cases, geometry round-trips, malformed input, tamper detection |
-| **Validation evidence** | Performance claims are measured on held-out data with the shipped code path | `src/evaluation/evaluate.py` runs the *production* `segment()` function on the test split, in original scan geometry; the evaluation file hash is pinned in the registry |
-| **Risk management** | Known failure modes have controls | input validation and limits shipped with the model; inference refuses tampered checkpoints; trace warns when a "test" scan was actually in training data |
-| **Separation of research and production** | Experiments can be messy; releases cannot | experiments live in `artifacts/experiments/`; only registered, gated, hash-pinned models are served; inference records the model's status at inference time |
-| **Auditability** | A reviewer can answer questions from records, not memory | plain JSON records, atomic writes, no hidden state; `git_commit` and dirty-tree flag in every experiment |
+**Traceability.** Every prediction can be traced back to the scan, model, training run,
+dataset and settings that produced it (`src/lineage/trace.py`). The trace re-checks the file
+hashes, so it notices if anything was edited afterwards.
 
-## How the standards relate (high level)
+**Reproducibility.** Fixed seeds, deterministic PyTorch settings, and augmentation that
+depends only on the seed, epoch and sample. A test trains twice and checks that the weights
+are identical. On the real data, a restarted run gave exactly the same first-epoch loss.
 
-**IEC 62304 (medical device software life cycle).** Requires a defined
-development process, software requirements, architecture, unit/integration
-verification, configuration management and problem resolution, scaled by
-software safety class. This repo shows the *technical* side of configuration
-management (versioned data, configs, models, code commit per artifact) and
-verification (automated tests in CI). It does not include requirements
-specifications, a documented software development plan, SOUP management or
-formal problem resolution, which a real product needs.
+**Dataset versioning.** The manifest lists every scan with its hash and split. The dataset
+version is a hash of all of that. If one scan changes, the version changes.
 
-**ISO 14971 (risk management for medical devices).** Requires identifying
-hazards, estimating and controlling risks, and verifying the controls. In ML,
-typical hazards are distribution shift, wrong input modality/geometry, silent
-model substitution and data leakage. This repo implements some *controls*
-(input limits, checksum-verified models, leakage warning, release gates) but
-not the risk analysis itself (hazard identification, severity/probability,
-residual risk acceptance).
+**Model versioning.** When a model is registered, the checkpoint is copied and its hash is
+stored. Every time it is loaded, the hash is checked. A changed file is refused.
 
-**ISO 13485 (quality management systems).** The organizational framework:
-document control, design controls, supplier management, CAPA, training
-records. Code cannot provide this; it can make design-control evidence (design
-inputs → outputs → verification → validation) easy to produce and audit.
+**Controlled releases.** A model can only go from candidate to validated if its test results
+pass the rules in `configs/release.yaml`. Every status change needs a written reason, and the
+registry keeps who did it and when. Only one model is in production at a time.
 
-**EU AI Act.** Most AI medical device software that requires a notified body
-under the MDR is classified as *high-risk* AI. Obligations include data
-governance (relevance, representativeness, error handling), technical
-documentation, record-keeping/logging, transparency, human oversight, accuracy
-and robustness. The dataset manifest, evaluation records, inference records and
-lineage trace are the kind of technical artefacts these obligations draw on.
-Note: application dates for high-risk obligations have been subject to change;
-check the current legal text before relying on any date.
+**Testing.** 61 automated tests run on every push (GitHub Actions). They include the tricky
+cases: broken scans, empty masks, geometry round trips, and tampered files.
 
-## What a real product would add
+**Research vs. production.** Training runs live in `artifacts/experiments/` and can be as messy
+as needed. Only registered models that passed the release rules are used for inference, and
+each inference record notes the model's status at the time.
 
-- Requirements and a traceability matrix from requirement → design → test
-- Formal risk analysis (ISO 14971) linking hazards to the controls above
-- Subgroup / stratified performance analysis (scanner vendor, field strength,
-  age, pathology), failure-case review, and clinically meaningful acceptance criteria
-- Post-market monitoring: drift detection on input statistics and outputs
-- Access control and electronic signatures on promotions (21 CFR Part 11 style)
-- An append-only, tamper-evident store for records (instead of local JSON files)
-- Cybersecurity (IEC 81001-5-1) and SOUP/dependency management with pinned versions
-- Clinical evaluation and usability engineering (IEC 62366) for the viewer
+## The standards, in short
+
+**IEC 62304** is about the software development process for medical device software:
+requirements, architecture, testing, configuration management and bug handling. This project
+covers some of the technical side (versioning and automated tests). It has no written
+requirements, development plan or formal bug process.
+
+**ISO 14971** is risk management: find what could go wrong, judge how bad it is, and put
+controls in place. This project has some controls (input checks, verified model files, the
+data leakage warning, release rules), but no real risk analysis behind them.
+
+**ISO 13485** is the quality management system for the whole company: document control,
+design reviews, suppliers, corrective actions, training. That is organisation, not code. Good
+code just makes the evidence easier to produce.
+
+**EU AI Act.** Most AI software in medical devices counts as high-risk AI. That brings rules on
+data quality, technical documentation, logging, transparency, human oversight, accuracy and
+robustness. Records like the manifest, evaluation results, inference logs and trace are the
+kind of material those rules ask for. The dates when these rules apply have changed before, so
+check the current text.
+
+## What a real product would still need
+
+- written requirements, and a link from each requirement to its tests
+- a real risk analysis connected to the controls above
+- evaluation per patient group, scanner and disease, and a review of failure cases with clinicians
+- monitoring after release, to notice when incoming scans start to look different
+- user accounts and signatures on model promotions
+- tamper-proof storage for the records instead of local JSON files
+- cybersecurity and dependency management
+- clinical evaluation and usability testing for the viewer

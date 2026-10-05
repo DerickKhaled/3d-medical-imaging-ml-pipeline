@@ -1,17 +1,15 @@
-"""Interactive viewer: 3D reconstruction next to the scan with its segmentation overlay.
+"""3D viewer for one segmented scan.
 
-    python -m src.visualization.viewer --case INF-20261003-a1b2c3
-    python -m src.visualization.viewer --case INF-... --screenshot docs/images/viewer.png
+    python -m src.visualization.viewer --case INF-20261005-abc123
+    python -m src.visualization.viewer --case INF-... --screenshot viewer.png
 
-Left:  3D surface meshes in scanner coordinates, with the scan's orthogonal
-       slices for anatomical context. Mouse: rotate (left), zoom (wheel), pan (shift+left).
-       Checkboxes show/hide each structure and the scan slices; a slider sets opacity;
-       the 'Measure' checkbox enables a click-click distance ruler (in mm).
-Right: one slice of the scan with the predicted segmentation overlaid; a slider scrolls
-       through the slices.
+Left: the 3D meshes with three slices of the scan. Rotate with the left mouse
+button, zoom with the wheel, pan with shift + left mouse. The boxes turn each
+structure and the slices on and off, the slider changes opacity, and "Measure"
+lets you click two points to get a distance in mm.
 
-This is not a reproduction of a clinical viewer. It shows how segmentation output
-becomes a usable spatial representation, with the provenance of what is shown.
+Right: one slice of the scan with the segmentation on top. The slider scrolls
+through the slices.
 """
 
 from __future__ import annotations

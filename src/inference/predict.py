@@ -1,19 +1,14 @@
-"""Production-style inference: one scan in, one traceable segmentation out.
+"""Segment one new scan with a registered model.
 
-    python -m src.inference.predict --input scan.nii.gz --model-version v1.0
     python -m src.inference.predict --input scan.nii.gz --model-version production
 
-Steps (each is a function below, in this order):
+Steps: load the scan, check it, hash it, load the model (its file hash is
+checked) together with the preprocessing that was saved with it, run the
+network, clean up the mask, map it back onto the original scan, save it, and
+write an inference record.
 
-    1. load the input                      6. run the network
-    2. validate it (model's input limits)  7. post-process the mask
-    3. hash it                             8. map it back to the input geometry and save
-    4. load the model's *registered*       9. measure runtime
-       preprocessing (never the caller's)  10. write the inference record
-    5. load the checkpoint (hash-verified)
-
-The same ``segment()`` function is used by ``src.evaluation.evaluate``, so the
-reported metrics describe exactly the code path that produces predictions.
+The evaluation uses the same segment() function, so the test numbers describe
+exactly this code.
 """
 
 from __future__ import annotations

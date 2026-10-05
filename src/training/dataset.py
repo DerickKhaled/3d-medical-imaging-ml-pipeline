@@ -1,8 +1,7 @@
-"""PyTorch dataset over the preprocessed cache, with deterministic augmentation.
+"""PyTorch dataset that reads the preprocessed scans, with augmentation.
 
-Augmentation randomness is derived from (seed, epoch, sample index), not from
-global RNG state, so a run is reproducible regardless of DataLoader worker
-count or scheduling.
+The random augmentation is seeded from (seed, epoch, sample index), so a training
+run gives the same result no matter how many DataLoader workers are used.
 """
 
 from __future__ import annotations

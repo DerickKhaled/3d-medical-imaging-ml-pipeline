@@ -1,11 +1,10 @@
-"""Self-describing checkpoints.
+"""Save and load checkpoints.
 
-A checkpoint carries the weights *and* everything needed to use them correctly:
-model architecture, class names, the exact preprocessing configuration, the
-post-processing configuration and the dataset/experiment it came from.
+A checkpoint holds the weights plus everything needed to use them: model
+settings, class names, preprocessing and post-processing settings, and the
+dataset and experiment it came from.
 
-Loading uses ``torch.load(weights_only=True)``: only tensors and plain Python
-types are deserialised, so a checkpoint file cannot execute code.
+Loading uses torch.load(weights_only=True), so a checkpoint file can't run code.
 """
 
 from __future__ import annotations

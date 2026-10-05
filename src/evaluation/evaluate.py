@@ -1,14 +1,10 @@
-"""Evaluate a registered model on a split of its own dataset version.
+"""Evaluate a registered model on the test scans.
 
     python -m src.evaluation.evaluate --model-version v1.0 --split test
 
-Runs the production inference path (``src.inference.predict.segment``) on every
-scan of the split and compares the result with the reference label *in the
-original scan geometry*. Writes ``artifacts/evaluations/EVAL-*.json`` and
-attaches the summary to the registry entry, where the release gate reads it.
-
-Metrics are deterministic for a given checkpoint and dataset; only the
-latency figures vary between runs.
+It uses the same segment() function as the inference command and compares the
+result with the true label in the original scan size. The result is saved to
+artifacts/evaluations/ and attached to the model in the registry.
 """
 
 from __future__ import annotations

@@ -1,14 +1,10 @@
-"""Segmentation mask -> one surface mesh per anatomical structure.
+"""Turn a saved segmentation into one 3D mesh per structure.
 
     python -m src.reconstruction.mesh --inference-id INF-...
 
-Deliberately independent of the ML model: it consumes a saved mask (and checks
-the mask's hash against the inference record), so meshing can be re-run,
-changed or validated without touching the model.
-
-Method: marching cubes (Lorensen & Cline, 1987) on each binary structure,
-vertices mapped from voxel indices to scanner (physical, mm) coordinates,
-optional Taubin smoothing (volume-preserving), export as STL / PLY / OBJ.
+This doesn't touch the model. It reads the saved mask and checks its hash first.
+Method: marching cubes, points converted to scanner coordinates in mm, light
+smoothing (Taubin, which keeps the volume), saved as STL, PLY and OBJ.
 """
 
 from __future__ import annotations

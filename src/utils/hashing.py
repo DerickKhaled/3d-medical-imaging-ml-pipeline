@@ -1,8 +1,7 @@
-"""Content hashing.
+"""SHA-256 hashes for files, arrays and JSON.
 
-Every artifact in the pipeline (source scans, manifests, configs, checkpoints,
-predictions) is identified by a SHA-256 of its content. Hashes, not file names
-or timestamps, are what make lineage verifiable.
+Everything in the pipeline is identified by the hash of its content, not by its
+name or date. That is what lets the trace check that nothing was changed.
 """
 
 from __future__ import annotations

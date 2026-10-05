@@ -1,18 +1,11 @@
-"""Trace a prediction back to its source data, and verify every link.
+"""Trace a prediction back to the scan, model and data that produced it.
 
-    python -m src.lineage.trace --inference-id INF-20261003-a1b2c3
-    python -m src.lineage.trace --inference-id INF-20261003-a1b2c3 --json
+    python -m src.lineage.trace --inference-id INF-20261005-abc123
 
-Answers, from records alone:
-    Which source scan produced this prediction?       -> input hash, its place in the dataset
-    Which model produced it?                          -> registry entry + verified checkpoint hash
-    Which experiment produced the checkpoint?         -> experiment record, git commit, seed
-    Which dataset trained that model?                 -> manifest, re-hashed to detect edits
-    Which preprocessing version was used?             -> config, re-hashed to its version
-    Which metrics justified the release?              -> evaluation file (hash-checked), promotions
-
-Each link is *verified* (files are re-hashed), not just looked up. The command
-exits with status 1 if any check fails.
+It shows the chain prediction -> model -> evaluation -> experiment -> dataset ->
+preprocessing -> source scan. Along the way it re-computes the hashes of the
+files, so it notices if anything was edited afterwards. It exits with code 1
+if any check fails.
 """
 
 from __future__ import annotations
@@ -232,8 +225,8 @@ def render(trace: Trace) -> str:
     lines = []
     for index, link in enumerate(trace.chain):
         if index:
-            lines.append("   │")
-            lines.append("   ▼")
+            lines.append("   |")
+            lines.append("   v")
         lines.append(f"{link['step']}: {link['id']}")
         for key, value in link["details"].items():
             if key == "promotions":  # the release history reads best as one event per line

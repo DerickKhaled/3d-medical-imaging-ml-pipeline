@@ -1,16 +1,14 @@
-"""Train a segmentation model from one experiment config.
+"""Train a model from one experiment config.
 
     python -m src.training.train --config configs/train.yaml
 
-Produces ``artifacts/experiments/EXP-NNN/``:
+Writes artifacts/experiments/EXP-NNN/ with:
+    experiment.json   what was trained, on which data, with which code and settings
+    history.json      loss and validation Dice per epoch
+    best.pt, last.pt  checkpoints
 
-    experiment.json   the experiment record (what was trained, on what, with which code)
-    history.json      per-epoch loss and validation Dice
-    best.pt / last.pt self-describing checkpoints
-
-Model selection uses validation Dice computed in network space (fast, every
-epoch). The release evaluation in ``src.evaluation.evaluate`` is separate and
-runs the full inference path on the held-out test split.
+The best epoch is picked on the validation scans. The final test evaluation is a
+separate step (src.evaluation.evaluate).
 """
 
 from __future__ import annotations

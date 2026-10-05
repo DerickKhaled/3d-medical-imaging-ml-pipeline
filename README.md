@@ -1,315 +1,270 @@
 # 3D Medical Imaging ML Pipeline
 
-A small, end-to-end, **reproducible and traceable** pipeline that turns an MRI/CT
-volume into a 3D segmentation and interactive surface model, and can prove where
-every output came from.
+This project takes an MRI scan, segments structures in it with a PyTorch 3D U-Net,
+and turns the result into 3D models you can rotate, measure and export.
 
-> **I do not only train models. I build reproducible, traceable and maintainable ML
-> systems that can move toward production.**
+The model is only one part of it. I wanted the whole path from raw scan to 3D model
+to be reproducible and traceable. For any prediction you can ask "which scan, which
+model, which training data, which code?" and get a verified answer.
 
-```
-CT / MRI ─▶ validate ─▶ manifest ─▶ preprocess ─▶ PyTorch 3D U-Net ─▶ evaluate ─▶ registry
-                                                                                  │ (release gate)
- new scan ─▶ inference (registered preprocessing, hash-verified model) ◀─────────┘
-                │
-                ├─▶ segmentation (NIfTI, in the scan's geometry) + inference record
-                ├─▶ 3D meshes per structure (STL / PLY / OBJ, scanner mm coordinates)
-                ├─▶ interactive viewer (3D + slice overlay)
-                └─▶ lineage trace: prediction → model → evaluation → experiment → dataset → scan
-```
-
-> **Medical disclaimer.** This project is a technical demonstration only and is not
-> intended for diagnosis, treatment, clinical decision-making or patient care. It is
-> not a medical device and makes no regulatory claim.
+**Disclaimer:** this is a technical demo. It is not intended for diagnosis, treatment,
+clinical decisions or patient care, and it is not a medical device.
 
 ![viewer](docs/images/viewer.png)
 
-## Contents
+## How it works
 
-- [Why this project](#why-this-project) · [Results](#results) · [Quick start](#quick-start)
-- [Dataset setup](#dataset-setup) · [Training](#training) · [Evaluation](#evaluation)
-- [Model registry](#model-registry) · [Inference](#inference) · [3D reconstruction and viewer](#3d-reconstruction-and-viewer)
-- [Lineage](#lineage) · [Testing](#testing) · [Repository layout](#repository-layout)
-- [Limitations](#limitations) · Further reading: [architecture](docs/architecture.md),
-  [regulated ML notes](docs/regulated_ml_notes.md), [demo script](docs/interview_demo.md)
+```
+ MRI / CT scan
+      |
+      v
+ check the scan  ->  list it in a versioned dataset (manifest)
+      |
+      v
+ preprocess (same steps every time, version = hash of the settings)
+      |
+      v
+ train a 3D U-Net (PyTorch)  ->  experiment record
+      |
+      v
+ evaluate on held-out scans  ->  register the model  ->  promote to production
+      |
+      v
+ new scan  ->  segmentation  ->  3D meshes  ->  viewer
+                    |
+                    +->  inference record  ->  lineage trace back to the source scan
+```
 
-## Why this project
-
-Medical imaging ML fails in production less often because of the network and more
-often because of everything around it: wrong geometry, silently changed data,
-untracked preprocessing, unclear which model produced a result. This repository is
-deliberately small (one model, no services, no database) so that the
-lifecycle around the model is easy to see and easy to review:
-
-| Question an auditor or engineer asks | Answered by |
-|---|---|
-| Which scans trained this model, and which were held out? | `artifacts/manifests/<dataset_version>.json` |
-| Exactly how were images preprocessed? | `preprocessing_version` (a hash of the config) |
-| Which code, seed and config produced the checkpoint? | `artifacts/experiments/EXP-*/experiment.json` |
-| What evidence justified releasing it, and who approved it? | registry entry: evaluation + promotion history |
-| Which model, preprocessing and input produced *this* prediction? | `python -m src.lineage.trace --inference-id …` |
+Every step writes a small JSON record into `artifacts/`. Records point to each other
+by ID and by file hash, so you can follow any output back to where it came from.
 
 ## Results
 
-Measured on a 14-core laptop CPU (no GPU), model `v1.0` from `EXP-001`
-(3D U-Net, 350,827 parameters, 20 epochs, 55 min, seed 42; the git commit is in the
-experiment record):
+Trained on my laptop CPU (no GPU), 20 epochs, about 55 minutes.
+The model has 350,827 parameters.
 
-| Split | Cases | Mean Dice | Anterior Dice | Posterior Dice | Mean IoU |
-|---|---|---|---|---|---|
-| Validation (model selection, network space) | 26 | 0.876 | 0.884 | 0.869 | – |
-| **Test (held out, original scan geometry)** | **40** | **0.877** | **0.883** | **0.872** | **0.783** |
+| | Scans | Mean Dice | Anterior | Posterior |
+|---|---|---|---|---|
+| Validation | 26 | 0.876 | 0.884 | 0.869 |
+| Test (never seen in training) | 40 | 0.877 | 0.883 | 0.872 |
 
-Test precision/recall: anterior 0.864 / 0.907, posterior 0.873 / 0.875.
-Inference: ~110 ms network forward pass, ~0.5 s end-to-end per scan on CPU.
-For context, published state-of-the-art on this task (nnU-Net) is around 0.89–0.90 mean Dice
-on the challenge's hidden test set (not directly comparable to this split).
+- Test IoU: 0.783
+- Inference: about 0.1 s for the network and 0.5 s end to end per scan, on CPU
+- For comparison, nnU-Net (the strong standard baseline) reports about 0.89-0.90 on
+  this task. Its test set is different, so the numbers are not directly comparable.
 
-**Reproducibility check on real data:** an interrupted run and its restart produced the
-identical epoch-1 loss (1.8197) and validation Dice (0.3964); a test asserts identical
-weights for repeated smoke runs.
+Training is reproducible. I restarted an interrupted run and the first epoch gave
+exactly the same loss (1.8197) and validation Dice (0.3964).
 
 ![slices](docs/images/slices.png)
 
-## Quick start
+## Setup
 
-Requires Python ≥ 3.10. A GPU is optional; everything runs on CPU.
+You need Python 3.10 or newer. A GPU is optional.
 
-```bash
-make setup          # venv + CPU PyTorch + package (or see "Windows" below)
-make data           # download MSD hippocampus (27 MB, checksum-verified) + manifest
-make train-demo     # ~55 min on a laptop CPU → EXP-001
-make register       # EXP-001 → model v1.0 (candidate)
-make evaluate       # test split → attaches evidence to v1.0
-make promote        # candidate → validated (release gate) → production
-make infer          # segment a held-out test scan
-make mesh           # 3D meshes for that case
-make viewer         # interactive 3D viewer
-make trace          # lineage of the prediction
-make test           # full test suite
-```
-
-**Windows (PowerShell)**: `.\scripts\run_pipeline.ps1` runs every step below in order
-(after the setup lines). Each Makefile target is one `python -m …` command:
+Windows (PowerShell):
 
 ```powershell
-py -3.12 -m venv .venv; .\.venv\Scripts\Activate.ps1
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -e ".[dev]"
+```
+
+Linux / macOS: `make setup`
+
+Docker (runs the tests): `docker build -t medimg3d .` then `docker run --rm medimg3d`
+
+## Run everything
+
+On Windows, one script runs the whole pipeline (training takes about 55 min):
+
+```powershell
+.\scripts\run_pipeline.ps1
+```
+
+On Linux / macOS, use the Makefile targets in the same order:
+`make data train-demo register evaluate promote infer mesh viewer trace`
+
+Below are the individual steps, so you can run and inspect each one.
+
+## Step by step
+
+### 1. Get the data
+
+I use the hippocampus task from the
+[Medical Segmentation Decathlon](http://medicaldecathlon.com): 260 brain MRI scans
+with labels for two structures, the anterior and posterior hippocampus. It is only
+27 MB, so the whole project runs on a normal laptop. Licence: CC-BY-SA 4.0.
+
+```powershell
 python -m src.data.download --out data
 python -m src.data.manifest --config configs/data.yaml
-python -m src.training.train --config configs/train.yaml
-python -m src.registry.model_registry register --experiment EXP-001 --version v1.0
-python -m src.evaluation.evaluate --model-version v1.0 --split test
-python -m src.registry.model_registry promote --version v1.0 --to validated --reason "test-split evaluation meets the release gate"
-python -m src.registry.model_registry promote --version v1.0 --to production --reason "approved for the demo release"
-python -m src.inference.predict --input data/Task04_Hippocampus/imagesTr/hippocampus_017.nii.gz --model-version production
-python -m src.reconstruction.mesh --inference-id <INF-ID printed above>
-python -m src.visualization.viewer --case <INF-ID>
-python -m src.lineage.trace --inference-id <INF-ID>
 ```
 
-**Docker** (CPU; runs the test suite by default):
+The download checks the file against a fixed SHA-256 before unpacking.
 
-```bash
-docker build -t medimg3d .
-docker run --rm medimg3d
-```
+The manifest step checks every scan (size, spacing, broken values, label matches
+image) and writes a list of all accepted scans. Each scan gets an ID made from its
+content hash, not from its file name, because in hospitals file names often contain
+patient names. The dataset version is a hash of all scans and the split, so if any
+scan changes, the version changes.
 
-## Dataset setup
+Split: 194 train, 26 validation, 40 test.
 
-[Medical Segmentation Decathlon](http://medicaldecathlon.com) **Task04 Hippocampus**:
-260 labelled T1-weighted MRI volumes (Vanderbilt University Medical Center, CC-BY-SA 4.0),
-two structures: anterior and posterior hippocampus. It is small (27 MB), real, and
-trains on a CPU, while still exercising every geometric step a CT/MRI pipeline needs.
+### 2. Train
 
-```bash
-python -m src.data.download --out data      # verifies a pinned SHA-256 before extracting
-python -m src.data.manifest --config configs/data.yaml
-```
-
-The manifest validates every scan (dimensions, spacing, finite and non-constant
-intensities, label/image geometry match, known classes, duplicates), ignores OS
-metadata files, and records per scan: `sample_id`, relative `source_path`,
-`source_hash`, `shape`, `spacing`, `modality`, `dataset_version`, `split`,
-`timestamp`. No patient-identifying information is stored; sample IDs come from
-content hashes, not file names.
-
-**No real data?** `python -m src.data.synthetic --out data/synthetic` writes
-synthetic NIfTI volumes in the same layout; `configs/smoke/` runs the whole
-pipeline on them in seconds (this is what CI does).
-
-**CT data** works through the same code: set `modality: CT` and
-`intensity.mode: ct_window` (Hounsfield-unit windowing) in the configs.
-**DICOM** series directories are accepted by `src.data.loaders.load_volume`.
-
-## Training
-
-```bash
+```powershell
 python -m src.training.train --config configs/train.yaml
 ```
 
-- Model: compact 3D U-Net in plain PyTorch (`src/models/unet3d.py`, 350k parameters),
-  Dice + cross-entropy loss, AdamW, cosine learning-rate schedule.
-- Mixed precision when CUDA is available; deterministic algorithms and seeds always.
-- Augmentation: left-right flip, intensity scale/shift, Gaussian noise; randomness is derived
-  from `(seed, epoch, sample)` so results do not depend on worker scheduling.
-- Model selection on the validation split each epoch; `best.pt` / `last.pt` are
-  self-describing (architecture, classes, preprocessing, dataset version inside).
+All settings come from `configs/train.yaml`. If you mistype a key, it fails
+immediately instead of quietly using a default.
 
-The experiment record (`artifacts/experiments/EXP-001/experiment.json`) contains
-`experiment_id`, `dataset_version`, `preprocessing_version`, `model_name`,
-`model_config`, `training_config`, `random_seed`, `code_version` (git commit +
-dirty flag), `best_checkpoint` (+ SHA-256), `metrics`, `timestamp`.
+The result goes to `artifacts/experiments/EXP-001/`. That folder holds
+`experiment.json`, which records the git commit, seed, all configs and the hash of
+the best checkpoint, alongside the loss and Dice for every epoch.
 
-## Evaluation
+### 3. Register and evaluate
 
-```bash
+```powershell
+python -m src.registry.model_registry register --experiment EXP-001 --version v1.0
 python -m src.evaluation.evaluate --model-version v1.0 --split test
 ```
 
-Runs the **production inference function** on every held-out test scan and scores
-the result in the original scan geometry: Dice, IoU, precision, recall per
-structure, plus latency. Undefined values (for example precision with no predicted
-voxels) are reported as `null` and excluded from means rather than silently
-counted. Output: `artifacts/evaluations/EVAL-*.json`, attached to the registry entry.
+Evaluation runs the same code the inference command uses, on the 40 test scans, and
+compares the result to the real labels in the original scan size. It reports Dice,
+IoU, precision and recall per structure, plus timing.
 
-## Model registry
+### 4. Promote
 
-```bash
-python -m src.registry.model_registry register --experiment EXP-001 --version v1.0
+```powershell
+python -m src.registry.model_registry promote --version v1.0 --to validated --reason "test results meet the release rules"
+python -m src.registry.model_registry promote --version v1.0 --to production --reason "approved for demo"
 python -m src.registry.model_registry list
-python -m src.registry.model_registry inspect --version v1.0
-python -m src.registry.model_registry promote --version v1.0 --to validated --reason "..."
 ```
 
-`candidate → validated → production` (and `→ retired`). Promotion to `validated`
-requires an evaluation on the split, case count and Dice threshold in
-`configs/release.yaml`, on the same checkpoint and dataset version. Every
-transition records who, when and why; versions are immutable; checkpoints are
-copied into the registry and hash-verified on every load. This demonstrates
-controlled model lifecycle management; it is not a claim of regulatory compliance.
+A model goes `candidate -> validated -> production`. To become `validated` it needs a
+test evaluation that passes the rules in `configs/release.yaml` (at least 20 test
+scans and Dice of at least 0.80). You can't skip a step, and every change needs a
+reason. The registry stores who changed what, and when.
 
-## Inference
+### 5. Segment a scan
 
-```bash
-python -m src.inference.predict --input scan.nii.gz --model-version production
+```powershell
+python -m src.inference.predict --input data/Task04_Hippocampus/imagesTr/hippocampus_017.nii.gz --model-version production
 ```
 
-Load → validate against the model's input limits → hash → apply **the model's
-registered preprocessing** (the caller cannot override it) → load the hash-verified
-checkpoint → segment → keep largest component per structure → map back to the
-input's voxel grid → save `segmentation.nii.gz` → write the inference record
-(`inference_id`, `input_hash`, `model_version`, `dataset_version`,
-`preprocessing_version`, `prediction_hash`, `runtime_ms`, `device`, `timestamp`, ...).
+This prints an inference ID like `INF-20261005-abc123`. The command:
 
-## 3D reconstruction and viewer
+- checks the scan
+- uses the preprocessing that was saved with the model (you can't pass a different one)
+- verifies the model file hash before loading it
+- saves the segmentation in the same size and position as the input scan
+- writes a record with the input hash, model version and output hash
 
-```bash
+You can also pass a folder of DICOM files as `--input`.
+
+### 6. Build the 3D models and open the viewer
+
+```powershell
 python -m src.reconstruction.mesh --inference-id INF-...
 python -m src.visualization.viewer --case INF-...
-python -m src.visualization.slices --case INF-...        # static 3-plane overlay PNG
 ```
 
-Meshes: marching cubes per structure, vertices in scanner millimetre coordinates
-(they overlay the scan in any tool), volume-preserving Taubin smoothing, export to
-STL, PLY and OBJ. Meshing is independent of the model and checks the mask's hash.
+The mesh step creates one 3D surface per structure (marching cubes) and saves it as
+STL, PLY and OBJ. Coordinates are in millimetres in scanner space, so the meshes line
+up with the scan in other tools too.
 
-Viewer (PyVista): rotate / zoom / pan; show or hide each structure and the scan
-slices; opacity slider; click-click distance measurement in mm; case metadata
-(model, dataset, preprocessing, volumes); right panel: scan slices with the
-segmentation overlay and a slice slider. `--screenshot file.png` renders off-screen.
+In the viewer you can:
 
-## Lineage
+- rotate (left mouse), zoom (wheel) and pan (shift + left mouse)
+- turn each structure and the scan slices on or off
+- change the opacity of the structures
+- measure distances: tick "Measure", then click two points
+- scroll through slices with the segmentation on top (right panel)
 
-```bash
+For a static image of three slices, run `python -m src.visualization.slices --case INF-...`.
+
+### 7. Trace a prediction
+
+```powershell
 python -m src.lineage.trace --inference-id INF-...
 ```
 
-Walks prediction → model → evaluation → experiment → dataset → preprocessing →
-source scan, and **re-hashes every link** (prediction file, checkpoint, evaluation
-file, manifest content, preprocessing config). Exits non-zero if anything was
-modified. It also reports whether the input scan was part of the training data.
+This walks back from the prediction to the model, the evaluation, the experiment, the
+dataset, the preprocessing settings and the original scan. It doesn't only look things
+up: it re-computes the hashes of the files involved. If anything was changed
+afterwards, it reports FAIL. It also warns you if the scan you ran was part of the
+training data.
 
-Real output for the demo case (abridged):
+## Trying other scans
 
-```
-Inference: INF-20261005-8f09b9            runtime_ms: 523.15   model_status_at_inference: production
-   ▼
-Model: v1.0 (unet3d-73d90382)              checkpoint_hash: 73d90382113a9096
-   promotions:
-     - new -> candidate: registered from EXP-001
-     - candidate -> validated: test-split evaluation meets the release gate
-     - validated -> production: approved for the demo release
-   ▼
-Evaluation: EVAL-20261005-d998cf           split: test   n_cases: 40   mean_dice: 0.8771
-   ▼
-Experiment: EXP-001                        git_commit: b96c31940ec8   seed: 42   best_epoch: 16
-   ▼
-Dataset: ds-msd-hippocampus-154afe58       scans: 260  {'train': 194, 'val': 26, 'test': 40}
-   ▼
-Preprocessing: pp-hippo-mri-a93bf23d       RAS, 1.0 mm, zscore, grid 48x64x48
-   ▼
-Source scan: 6157d1fe1d4a18ee              hippocampus_017.nii.gz  (split: test)
+- **Fair test:** use one of the 40 test scans. The trace shows `split: test`.
+  Their numbers: 017 025 044 053 058 089 093 107 109 114 141 158 162 166 172 174 175
+  180 184 188 189 199 203 215 217 225 226 230 231 235 280 314 322 327 345 354 355 359
+  378 394 (files `imagesTr/hippocampus_NNN.nii.gz`).
+- **New scans:** `data/Task04_Hippocampus/imagesTs/` has 130 scans without labels.
+  The trace says the scan is not part of the dataset.
+- **Training scan:** any other file in `imagesTr/`. The trace warns that the result is
+  not a fair test.
 
-Integrity checks: 9 PASS
-LINEAGE VERIFIED
+## Tests
+
+```powershell
+python -m pytest -q
 ```
 
-## Testing
+61 tests, about one minute on CPU. Among other things they check:
 
-```bash
-python -m pytest -q                 # all tests (~1 min on CPU)
-python -m pytest -q -m "not slow"   # skip the double-training reproducibility test
-```
+- loading NIfTI and DICOM, and rejecting broken scans
+- that preprocessing gives the same result every time, and can be undone exactly
+- the model, checkpoints, and that a changed checkpoint file is refused
+- that training twice gives identical weights
+- metrics, including edge cases like empty masks
+- registry rules (no skipping steps, versions can't be overwritten)
+- that the meshes are closed and have the right volume
+- that the trace detects an edited prediction or dataset file
+- a full run of the pipeline on small synthetic scans
 
-What is tested: NIfTI and DICOM loading, malformed/invalid volumes, configuration
-validation, deterministic preprocessing, resampling, exact inverse mapping of
-predictions (including under reorientation), CT windowing, model forward pass,
-checkpoint round-trip and tamper detection, bit-identical training reruns, metric
-edge cases, registry immutability and release gates, inference output geometry,
-rejection of bad input, mesh correctness (watertight, outward, volume within 5 %,
-physical coordinates), viewer scene loading, lineage integrity and tamper detection,
-and a full end-to-end smoke pipeline on synthetic data. CI (GitHub Actions) runs
-lint, format check, mypy and the tests on every push.
+GitHub Actions runs linting (ruff), type checks (mypy) and the tests on every push.
+CI uses the synthetic scans, so it doesn't need the real dataset or long training.
 
-## Repository layout
+## Project layout
 
 ```
-configs/            all behaviour (data, preprocessing, experiment, release gate, meshing)
-  smoke/            tiny synthetic-data variants used by tests and CI
+configs/          all settings (data, preprocessing, training, release rules, meshes)
 src/
-  config.py         strict, typed config schemas
-  data/             loaders (NIfTI, DICOM), validation, manifest, download, synthetic
-  preprocessing/    transforms (and their inverse), processed-sample cache
-  models/           3D U-Net, checkpoints
-  training/         dataset + augmentation, loss, training loop
-  evaluation/       metrics, release evaluation
-  registry/         model registry and release gate
-  inference/        production inference
-  reconstruction/   masks → meshes
-  visualization/    viewer, slice figures
-  lineage/          record layout + verifying trace
-  utils/            hashing, logging, reproducibility
-tests/              pytest suite
-docs/               architecture, regulated ML notes, interview demo
-artifacts/          generated (git-ignored): manifests, experiments, registry, inference
+  data/           loading, checks, manifest, download, synthetic test data
+  preprocessing/  image preprocessing and how to undo it
+  models/         the 3D U-Net and checkpoint saving/loading
+  training/       training loop, augmentation, loss
+  evaluation/     metrics and the test evaluation
+  registry/       model versions and promotion
+  inference/      segmenting a new scan
+  reconstruction/ segmentation to 3D meshes
+  visualization/  3D viewer and slice images
+  lineage/        records and the trace command
+tests/
+scripts/          run_pipeline.ps1 for Windows
+docs/             architecture and notes on regulated software
+artifacts/        everything the pipeline produces (not in git)
 ```
+
+More detail: [docs/architecture.md](docs/architecture.md) explains the design choices.
+[docs/regulated_ml_notes.md](docs/regulated_ml_notes.md) covers what this means for
+medical device software.
 
 ## Limitations
 
-- Trained on one small public dataset from one site; no subgroup, scanner or
-  pathology analysis; performance on other data is unknown.
-- Hippocampus crops are small volumes; the pipeline is general, but a whole-body CT
-  task would need patch-based training and sliding-window inference.
-- The registry and records are local JSON files for a single writer; no access
-  control or tamper-evident storage.
-- No uncertainty estimation or input-drift detection at inference.
-- The viewer is a demonstration, not a clinical viewer (no DICOM display protocols,
-  no usability engineering).
-- Nothing here has been clinically validated. See the disclaimer above and
-  [docs/regulated_ml_notes.md](docs/regulated_ml_notes.md).
+- One small public dataset from one hospital. I haven't tested other scanners or patient groups.
+- The scans are small crops around the hippocampus. Whole-body CT would need patch-based
+  training.
+- The registry is a JSON file for one user. There is no login and no tamper-proof storage.
+- No uncertainty estimate per prediction, and no check for unusual input data.
+- The viewer is a demo, not a clinical viewer.
 
-## License
+## Licence
 
-Code: MIT. Dataset: MSD Task04 Hippocampus, CC-BY-SA 4.0 (not redistributed here).
+Code: MIT. Dataset: Medical Segmentation Decathlon Task04, CC-BY-SA 4.0 (not included
+in this repo).

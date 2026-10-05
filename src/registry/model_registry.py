@@ -1,25 +1,17 @@
-"""A lightweight local model registry with explicit, evidence-gated promotion.
+"""A simple local model registry.
 
     python -m src.registry.model_registry register --experiment EXP-001 --version v1.0
     python -m src.registry.model_registry list
     python -m src.registry.model_registry inspect --version v1.0
     python -m src.registry.model_registry promote --version v1.0 --to validated --reason "..."
 
-Lifecycle:
+A model moves candidate -> validated -> production, and can be retired from any
+of these. To become validated it needs test results that pass configs/release.yaml.
+Every change needs a reason and is saved in the model's history (who, when, why).
+Only one model is in production at a time.
 
-    candidate ──(evaluation meets release gate)──▶ validated ──(explicit decision)──▶ production
-        │                                              │                                  │
-        └──────────────────────────────────────────────┴──────────▶ retired ◀─────────────┘
-
-* Registration copies the checkpoint into the registry and records its hash;
-  every later load verifies that hash.
-* A model is promoted only by an explicit command with a written reason.
-  Every transition is appended to the entry's history (who, when, why).
-* Only one model is in production at a time; promoting a new one retires the old.
-
-Storage is a single JSON file (``artifacts/registry/registry.json``) designed
-for one writer at a time. This is a demonstration of controlled model lifecycle
-management, not a claim of regulatory compliance.
+Registering copies the checkpoint and saves its hash; the hash is checked on
+every load. Everything is stored in one JSON file, meant for one user at a time.
 """
 
 from __future__ import annotations

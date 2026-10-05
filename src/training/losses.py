@@ -1,7 +1,7 @@
-"""Dice + cross-entropy: the standard, well-understood loss for medical segmentation.
+"""Dice + cross-entropy loss, the usual choice for medical segmentation.
 
-Cross-entropy gives stable per-voxel gradients; soft Dice counteracts the
-heavy background/foreground imbalance of small anatomical structures.
+Cross-entropy gives stable gradients per voxel. Dice helps with small structures,
+where almost every voxel is background.
 """
 
 from __future__ import annotations

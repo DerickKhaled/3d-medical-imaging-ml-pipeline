@@ -1,6 +1,6 @@
-"""Load everything a viewer needs for one inference case, without any GUI code.
+"""Load everything the viewer needs for one case, without opening a window.
 
-Kept separate from the viewer so it can be tested without an OpenGL context.
+Kept apart from the viewer so it can be tested without a screen.
 """
 
 from __future__ import annotations

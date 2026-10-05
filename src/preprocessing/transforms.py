@@ -1,12 +1,10 @@
-"""Deterministic preprocessing, driven entirely by ``PreprocessingConfig``.
+"""Preprocessing for scans and labels. All settings come from the config.
 
-Pipeline for an image:
+Steps: reorient -> resample to the target spacing -> normalise intensity -> crop/pad.
 
-    reorient  ->  resample to target spacing  ->  intensity normalisation  ->  crop/pad
-
-Labels go through the same geometric steps with nearest-neighbour interpolation.
-``GridRecord`` keeps what is needed to map a prediction back onto the original
-scan, so a segmentation is always delivered in the geometry of the input.
+Labels get the same geometric steps (with nearest-neighbour resampling).
+GridRecord remembers what was done, so a prediction can be mapped back onto the
+original scan exactly.
 """
 
 from __future__ import annotations

@@ -1,8 +1,6 @@
-"""Static figure: three orthogonal slices of the scan with the segmentation overlaid.
+"""Save a picture of three slices through the scan, with the segmentation on top.
 
-    python -m src.visualization.slices --case INF-... --out docs/images/slices.png
-
-Useful for reports and reviews where an interactive window is not available.
+python -m src.visualization.slices --case INF-... --out docs/images/slices.png
 """
 
 from __future__ import annotations

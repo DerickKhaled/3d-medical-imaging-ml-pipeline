@@ -1,12 +1,11 @@
-"""Materialise the preprocessed dataset, one file per sample, with a provenance index.
+"""Save the preprocessed scans so training doesn't redo the work every epoch.
 
     artifacts/processed/<dataset_version>/<preprocessing_version>/
-        <sample_id>.npz      image (1,Z,Y,X) float32, label (Z,Y,X) int64
-        index.json           per sample: source_hash -> processed_hash, split
+        <sample_id>.npz   image and label
+        index.json        which source scan became which processed file
 
-Because the directory is keyed by both versions, every processed sample states
-exactly which data and which preprocessing produced it. The cache is rebuilt
-only when it is missing, never silently overwritten.
+The folder name contains both versions, so you always know which data and
+which settings produced a file. Existing files are never overwritten.
 """
 
 from __future__ import annotations

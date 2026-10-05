@@ -1,16 +1,14 @@
-"""Where lineage records live and how they are written.
+"""Where the records are stored, and how they are written.
 
-Every stage writes a plain JSON record. Records reference each other by ID and
-by content hash, which is what ``src.lineage.trace`` walks:
+Every step writes a plain JSON file into artifacts/. The records point to each
+other by ID and by hash:
 
-    inference record ──model_version──▶ registry entry ──experiment_id──▶ experiment record
-           │                                  │                                 │
-      input_hash                       checkpoint_hash                   dataset_version
-           │                                                                    │
-           └───────────────── found in ──▶ dataset manifest ◀───────────────────┘
+    inference record -> registry entry (model) -> experiment -> dataset manifest
+          |                                                          ^
+          +------------- input hash is found in ---------------------+
 
-There is no database: the artifacts directory *is* the store. It can be
-archived, diffed and reviewed with ordinary tools.
+There is no database. The artifacts folder is the store, and you can read it
+with any text editor.
 """
 
 from __future__ import annotations

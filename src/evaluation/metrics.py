@@ -1,11 +1,10 @@
-"""Overlap metrics for multi-class segmentation masks.
+"""Dice, IoU, precision and recall for segmentation masks.
 
-All metrics come from the same per-class voxel counts (TP, FP, FN), so they
-are mutually consistent. Edge cases are defined explicitly:
-
-* Dice / IoU when both prediction and reference are empty: 1.0 (agreement on absence).
-* Precision with no predicted voxels, recall with no reference voxels: undefined -> None.
-  Undefined values are excluded from averages rather than silently counted as 0 or 1.
+All four come from the same voxel counts (true positives, false positives,
+false negatives). Edge cases:
+- prediction and label both empty: Dice and IoU are 1.0
+- precision with nothing predicted, or recall with nothing to find: None.
+  None values are left out of averages instead of being counted as 0 or 1.
 """
 
 from __future__ import annotations

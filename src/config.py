@@ -1,8 +1,7 @@
-"""Typed, validated configuration.
+"""Load and check the YAML config files.
 
-All pipeline behaviour comes from YAML files in ``configs/``. Every field is
-required (no hidden defaults) and unknown keys are rejected, so a typo in a
-config fails loudly instead of silently falling back to a default.
+Every setting has to be written in the config file. There are no hidden defaults,
+and an unknown key (for example a typo) is an error.
 """
 
 from __future__ import annotations
