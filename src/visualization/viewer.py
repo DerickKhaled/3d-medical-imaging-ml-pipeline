@@ -37,6 +37,7 @@ def build_plotter(scene: CaseScene, off_screen: bool = False) -> pv.Plotter:
         title=f"3D Medical Imaging ML Pipeline - {scene.inference_id}",
     )
     plotter.set_background(BACKGROUND)
+    plotter.enable_anti_aliasing("ssaa")  # smooth edges instead of jagged pixels
     _add_3d_view(plotter, scene)
     _add_slice_view(plotter, scene)
     plotter.subplot(0, 0)
@@ -47,18 +48,23 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     plotter.subplot(0, 0)
     actors = {
         name: plotter.add_mesh(
-            mesh, color=scene.colors[name], smooth_shading=True, specular=0.3, name=name
+            mesh,
+            color=scene.colors[name],
+            smooth_shading=True,
+            specular=0.5,
+            specular_power=20,
+            name=name,
         )
         for name, mesh in scene.meshes.items()
     }
     x, y, z = _segmentation_center(scene)
     slices = scene.image.slice_orthogonal(x=x, y=y, z=z)
     slice_actor = plotter.add_mesh(
-        # Semi-transparent so the structures stay visible where the slices cut through them.
+        # Faint, so the structures stay in front and the slices only give context.
         slices,
         cmap="gray",
         show_scalar_bar=False,
-        opacity=0.55,
+        opacity=0.3,
         name="scan_slices",
     )
 
@@ -119,7 +125,11 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     )
     plotter.add_axes(color=TEXT, viewport=(0.82, 0.78, 1.0, 1.0))
     plotter.camera_position = "iso"
-    plotter.reset_camera()
+    if scene.meshes:  # frame the anatomy, not the whole scan
+        plotter.reset_camera(bounds=pv.merge(list(scene.meshes.values())).bounds)
+        plotter.camera.zoom(0.9)
+    else:
+        plotter.reset_camera()
 
 
 def _add_slice_view(plotter: pv.Plotter, scene: CaseScene) -> None:

@@ -5,7 +5,16 @@ import numpy as np
 import pytest
 import SimpleITK as sitk
 
+from src.config import MeshConfig
 from src.reconstruction.mesh import mask_to_mesh
+
+MESH = MeshConfig(
+    formats=["stl"],
+    upsample_factor=2,
+    presmooth_sigma_vox=0.7,
+    smoothing_iterations=10,
+    marching_cubes_step=1,
+)
 from src.visualization.scene import load_case
 
 
@@ -26,9 +35,7 @@ def _reference(spacing=(0.5, 0.5, 0.5), origin=(10.0, -20.0, 5.0), direction=Non
 
 @pytest.mark.parametrize("direction", [None, (-1, 0, 0, 0, -1, 0, 0, 0, 1)])
 def test_sphere_mesh_is_closed_outward_and_in_millimetres(direction) -> None:  # type: ignore[no-untyped-def]
-    mesh = mask_to_mesh(
-        _sphere(12), _reference(direction=direction), step=1, smoothing_iterations=10
-    )
+    mesh = mask_to_mesh(_sphere(12), _reference(direction=direction), MESH)
     assert mesh is not None
     assert mesh.is_watertight
     expected_mm3 = 4 / 3 * np.pi * (12 * 0.5) ** 3  # radius 12 voxels x 0.5 mm
@@ -42,7 +49,7 @@ def test_sphere_mesh_is_closed_outward_and_in_millimetres(direction) -> None:  #
 
 
 def test_empty_mask_gives_no_mesh() -> None:
-    assert mask_to_mesh(np.zeros((10, 10, 10), bool), _reference(), 1, 0) is None
+    assert mask_to_mesh(np.zeros((10, 10, 10), bool), _reference(), MESH) is None
 
 
 def test_pipeline_meshes_exist_in_all_formats(pipeline_run) -> None:  # type: ignore[no-untyped-def]

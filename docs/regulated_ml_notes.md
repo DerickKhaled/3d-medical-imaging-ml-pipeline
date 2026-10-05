@@ -34,34 +34,4 @@ cases: broken scans, empty masks, geometry round trips, and tampered files.
 as needed. Only registered models that passed the release rules are used for inference, and
 each inference record notes the model's status at the time.
 
-## The standards, in short
 
-**IEC 62304** is about the software development process for medical device software:
-requirements, architecture, testing, configuration management and bug handling. This project
-covers some of the technical side (versioning and automated tests). It has no written
-requirements, development plan or formal bug process.
-
-**ISO 14971** is risk management: find what could go wrong, judge how bad it is, and put
-controls in place. This project has some controls (input checks, verified model files, the
-data leakage warning, release rules), but no real risk analysis behind them.
-
-**ISO 13485** is the quality management system for the whole company: document control,
-design reviews, suppliers, corrective actions, training. That is organisation, not code. Good
-code just makes the evidence easier to produce.
-
-**EU AI Act.** Most AI software in medical devices counts as high-risk AI. That brings rules on
-data quality, technical documentation, logging, transparency, human oversight, accuracy and
-robustness. Records like the manifest, evaluation results, inference logs and trace are the
-kind of material those rules ask for. The dates when these rules apply have changed before, so
-check the current text.
-
-## What a real product would still need
-
-- written requirements, and a link from each requirement to its tests
-- a real risk analysis connected to the controls above
-- evaluation per patient group, scanner and disease, and a review of failure cases with clinicians
-- monitoring after release, to notice when incoming scans start to look different
-- user accounts and signatures on model promotions
-- tamper-proof storage for the records instead of local JSON files
-- cybersecurity and dependency management
-- clinical evaluation and usability testing for the viewer

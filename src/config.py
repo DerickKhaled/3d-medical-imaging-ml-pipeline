@@ -175,6 +175,8 @@ class ReleaseConfig(StrictModel):
 
 class MeshConfig(StrictModel):
     formats: list[Literal["stl", "ply", "obj"]]
+    upsample_factor: int = Field(ge=1, le=4)
+    presmooth_sigma_vox: float = Field(ge=0, le=3)
     smoothing_iterations: int = Field(ge=0)
     marching_cubes_step: int = Field(ge=1)
 

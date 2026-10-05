@@ -3,8 +3,11 @@
     python -m src.reconstruction.mesh --inference-id INF-...
 
 This doesn't touch the model. It reads the saved mask and checks its hash first.
-Method: marching cubes, points converted to scanner coordinates in mm, light
-smoothing (Taubin, which keeps the volume), saved as STL, PLY and OBJ.
+
+Method: the mask is upsampled and lightly blurred, then marching cubes finds the
+surface. Without this the surface looks like stairs, because every voxel is a
+1 mm cube. The points are converted to scanner coordinates in mm, smoothed a
+little more (Taubin, which keeps the volume), and saved as STL, PLY and OBJ.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from typing import Any
 import numpy as np
 import SimpleITK as sitk
 import trimesh
+from scipy.ndimage import gaussian_filter, zoom
 from skimage.measure import marching_cubes
 
 from src.config import MeshConfig, load_config
@@ -28,14 +32,23 @@ log = get_logger(__name__)
 
 
 def mask_to_mesh(
-    binary_zyx: np.ndarray, reference: sitk.Image, step: int, smoothing_iterations: int
+    binary_zyx: np.ndarray, reference: sitk.Image, config: MeshConfig
 ) -> trimesh.Trimesh | None:
     """Surface of a binary mask in physical (mm) coordinates; None if the mask is empty."""
     if not binary_zyx.any():
         return None
-    padded = np.pad(binary_zyx.astype(np.float32), 1)  # closes surfaces touching the border
-    vertices_zyx, faces, _, _ = marching_cubes(padded, level=0.5, step_size=step)
-    index_xyz = vertices_zyx[:, ::-1] - 1.0  # undo padding; (z,y,x) -> (x,y,z)
+    padded = np.pad(binary_zyx.astype(np.float32), 2)  # room for the blur at the border
+
+    # Upsample and blur, then cut at 0.5: same shape, smooth instead of blocky.
+    factor = config.upsample_factor
+    fine = zoom(padded, factor, order=1, grid_mode=True, mode="grid-constant")
+    if config.presmooth_sigma_vox > 0:
+        fine = gaussian_filter(fine, sigma=config.presmooth_sigma_vox * factor)
+    vertices_zyx, faces, _, _ = marching_cubes(
+        fine, level=0.5, step_size=config.marching_cubes_step
+    )
+    # Fine grid index -> original voxel index (undo upsampling and padding), z,y,x -> x,y,z.
+    index_xyz = ((vertices_zyx + 0.5) / factor - 0.5 - 2.0)[:, ::-1]
 
     spacing = np.asarray(reference.GetSpacing())
     direction = np.asarray(reference.GetDirection()).reshape(3, 3)
@@ -48,8 +61,8 @@ def mask_to_mesh(
         faces = faces[:, ::-1]
 
     mesh = trimesh.Trimesh(vertices=physical, faces=faces, process=True)
-    if smoothing_iterations > 0:
-        trimesh.smoothing.filter_taubin(mesh, iterations=smoothing_iterations)
+    if config.smoothing_iterations > 0:
+        trimesh.smoothing.filter_taubin(mesh, iterations=config.smoothing_iterations)
     return mesh
 
 
@@ -66,9 +79,7 @@ def build_meshes(inference_id: str, paths: ArtifactPaths, config: MeshConfig) ->
     voxel_ml = float(np.prod(mask.GetSpacing())) / 1000.0
     structures = []
     for name, info in record["structures"].items():
-        mesh = mask_to_mesh(
-            voxels == info["label"], mask, config.marching_cubes_step, config.smoothing_iterations
-        )
+        mesh = mask_to_mesh(voxels == info["label"], mask, config)
         if mesh is None:
             log.info("%s: not present in the prediction, no mesh", name)
             continue

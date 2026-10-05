@@ -34,14 +34,14 @@ class CaseScene:
     def summary_lines(self) -> list[str]:
         r = self.record
         lines = [
-            f"Case        {self.inference_id}",
-            f"Input       {r['input_name']}  ({'x'.join(map(str, r['input_size_xyz']))})",
-            f"Model       {r['model_version']}  [{r['model_status_at_inference']}]",
-            f"Experiment  {r['experiment_id']}",
-            f"Dataset     {r['dataset_version']}",
-            f"Preproc     {r['preprocessing_version']}",
-            f"Runtime     {r['runtime_ms']:.0f} ms on {r['device']}",
-            "Structures:",
+            f"Result ID        {self.inference_id}",
+            f"Scan             {r['input_name']}  ({'x'.join(map(str, r['input_size_xyz']))} voxels)",
+            f"Model            {r['model_version']}  ({r['model_status_at_inference']})",
+            f"Trained in       {r['experiment_id']}",
+            f"Training data    {r['dataset_version']}",
+            f"Preprocessing    {r['preprocessing_version']}",
+            f"Time             {r['runtime_ms']:.0f} ms on {r['device']}",
+            "Volumes found:",
         ]
         for name, info in r["structures"].items():
             lines.append(

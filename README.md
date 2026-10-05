@@ -76,9 +76,25 @@ Linux / macOS: `make setup`
 
 Docker (runs the tests): `docker build -t medimg3d .` then `docker run --rm medimg3d`
 
-## Run everything
+## Run everything with one command
 
-On Windows, one script runs the whole pipeline (training takes about 55 min):
+```powershell
+python -m src.demo
+```
+
+The first time, this downloads the data, trains, evaluates and releases the model
+(about one hour on a CPU). After that it takes a few seconds: it segments a scan,
+builds the 3D meshes, prints the lineage trace and opens the viewer.
+
+Use your own scan, or skip the window:
+
+```powershell
+python -m src.demo --input data/Task04_Hippocampus/imagesTs/hippocampus_002.nii.gz
+python -m src.demo --no-viewer
+```
+
+On Windows there is also a script that runs every step one by one and shows its output
+(training takes about 55 min):
 
 ```powershell
 .\scripts\run_pipeline.ps1

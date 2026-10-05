@@ -1,3 +1,5 @@
 formats: [stl, ply, obj]
-smoothing_iterations: 15     # Taubin smoothing: removes voxel staircase without shrinking the surface
+upsample_factor: 2           # mesh on a 2x finer grid: more, smaller triangles
+presmooth_sigma_vox: 0.7     # light blur before meshing removes the voxel staircase
+smoothing_iterations: 10     # Taubin smoothing afterwards (keeps the volume)
 marching_cubes_step: 1

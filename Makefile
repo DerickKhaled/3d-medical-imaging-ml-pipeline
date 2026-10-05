@@ -12,7 +12,7 @@ INPUT   ?= data/Task04_Hippocampus/imagesTr/hippocampus_017.nii.gz
 CASE    ?= $(shell ls -t artifacts/inference 2>/dev/null | head -n 1)
 
 .PHONY: setup lint typecheck test test-fast data synthetic train-smoke train-demo register \
-        evaluate promote infer mesh viewer slices trace models demo-smoke
+        evaluate promote infer mesh viewer slices trace models demo
 
 setup:
 	python3 -m venv .venv
@@ -75,3 +75,6 @@ slices:
 
 trace:
 	$(PYTHON) -m src.lineage.trace --inference-id $(CASE)
+
+demo:               ## one command: prepares everything on first run, then segment + 3D + trace + viewer
+	$(PYTHON) -m src.demo --input $(INPUT)

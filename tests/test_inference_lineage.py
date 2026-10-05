@@ -114,3 +114,19 @@ def test_trace_detects_edited_manifest(pipeline_run, copied_paths: ArtifactPaths
 
     trace = trace_inference(pipeline_run.inference["inference_id"], copied_paths)
     assert ("dataset manifest content matches its version", False) in trace.checks
+
+
+def test_one_command_demo_runs_end_to_end(pipeline_run, capsys) -> None:  # type: ignore[no-untyped-def]
+    from src.demo import main
+
+    main(
+        [
+            "--input",
+            str(pipeline_run.test_scan),
+            "--no-viewer",
+            "--artifacts-dir",
+            str(pipeline_run.paths.root),
+        ]
+    )
+    output = capsys.readouterr().out
+    assert "Segmented" in output and "LINEAGE VERIFIED" in output
