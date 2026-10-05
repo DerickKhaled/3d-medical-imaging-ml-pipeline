@@ -1,7 +1,7 @@
 # Notes on regulated medical software
 
 First, to be clear: this project is not compliant with any standard, and I don't claim it
-is. Compliance needs a lot more than code: a quality system, written processes, risk
+is. Compliance needs: a quality system, written processes, risk
 management, clinical validation and documentation.
 
 What code *can* do is make that work much easier. If a system was built without

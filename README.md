@@ -53,8 +53,9 @@ The model has 350,827 parameters.
 - For comparison, nnU-Net (the strong standard baseline) reports about 0.89-0.90 on
   this task. Its test set is different, so the numbers are not directly comparable.
 
-Training is reproducible. I restarted an interrupted run and the first epoch gave
-exactly the same loss (1.8197) and validation Dice (0.3964).
+Training is reproducible. I deleted all results and ran the whole pipeline again from
+scratch: the new model file had exactly the same SHA-256 hash as the first one, and so
+did its predictions.
 
 ![slices](docs/images/slices.png)
 
