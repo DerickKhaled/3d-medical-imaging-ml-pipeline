@@ -53,10 +53,15 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
         )
         for name, mesh in scene.meshes.items()
     }
-    center = _segmentation_center(scene)
-    slices = scene.image.slice_orthogonal(*center)
+    x, y, z = _segmentation_center(scene)
+    slices = scene.image.slice_orthogonal(x=x, y=y, z=z)
     slice_actor = plotter.add_mesh(
-        slices, cmap="gray", show_scalar_bar=False, opacity=0.9, name="scan_slices"
+        # Semi-transparent so the structures stay visible where the slices cut through them.
+        slices,
+        cmap="gray",
+        show_scalar_bar=False,
+        opacity=0.55,
+        name="scan_slices",
     )
 
     # One checkbox per structure, plus one for the scan slices.
@@ -114,7 +119,7 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
         color=TEXT,
         font="courier",
     )
-    plotter.add_axes(color=TEXT)
+    plotter.add_axes(color=TEXT, viewport=(0.82, 0.78, 1.0, 1.0))
     plotter.camera_position = "iso"
     plotter.reset_camera()
 
@@ -130,7 +135,8 @@ def _add_slice_view(plotter: pv.Plotter, scene: CaseScene) -> None:
         plotter.add_mesh(
             scene.image.extract_subset(extent), cmap="gray", name="slice", show_scalar_bar=False
         )
-        overlay = scene.labels.extract_subset(extent).threshold(0.5, scalars="label")
+        voxel_layer = (0, nx, 0, ny, k, k + 1)  # the label grid has one more point per axis
+        overlay = scene.labels.extract_subset(voxel_layer).threshold(0.5, scalars="label")
         plotter.add_mesh(
             overlay,
             scalars="label",
@@ -162,10 +168,8 @@ def _add_slice_view(plotter: pv.Plotter, scene: CaseScene) -> None:
 
 
 def _segmentation_center_index(scene: CaseScene) -> np.ndarray:
-    nx, ny, nz = scene.labels.dimensions
-    labels = np.asarray(scene.labels.point_data["label"]).reshape(nz, ny, nx)
-    zyx = np.argwhere(labels > 0)
-    center_zyx = zyx.mean(axis=0) if len(zyx) else np.array([nz, ny, nx]) / 2
+    zyx = np.argwhere(scene.label_array > 0)
+    center_zyx = zyx.mean(axis=0) if len(zyx) else np.array(scene.label_array.shape) / 2
     return center_zyx[::-1]  # (x, y, z) indices
 
 

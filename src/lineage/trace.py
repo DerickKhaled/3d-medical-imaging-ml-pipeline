@@ -99,7 +99,7 @@ def trace_inference(inference_id: str, paths: ArtifactPaths) -> Trace:
                 "current_status": entry["status"],
                 "checkpoint_hash": entry["checkpoint_hash"][:16],
                 "promotions": [
-                    f"{h['from']} -> {h['to']} at {h['at']} by {h['by']}: {h['reason']}"
+                    f"{h['from'] or 'new'} -> {h['to']} at {h['at']} by {h['by']}: {h['reason']}"
                     for h in entry["history"]
                 ],
             },

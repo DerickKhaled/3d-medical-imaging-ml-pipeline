@@ -3,13 +3,14 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.config import ModelConfig
+from src.config import ModelConfig, load_experiment
 from src.lineage.records import ArtifactPaths, read_json
 from src.models.checkpoint import CheckpointIntegrityError, load_checkpoint, save_checkpoint
 from src.models.unet3d import build_model, count_parameters
 from src.training.train import train
 from src.utils.hashing import sha256_file
 
+from .conftest import REPO_ROOT
 from .pipeline_fixture import write_smoke_experiment
 
 
@@ -26,9 +27,10 @@ def test_forward_pass_shape(num_classes: int) -> None:
     assert logits.shape == (2, num_classes, 16, 24, 16)
 
 
-def test_demo_model_is_compact() -> None:
-    config = ModelConfig(name="unet3d", in_channels=1, num_classes=3, base_channels=16, depth=3)
-    assert count_parameters(build_model(config)) == 1_401_299
+def test_demo_model_is_compact(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(REPO_ROOT)
+    experiment, _, _ = load_experiment("configs/train.yaml")
+    assert count_parameters(build_model(experiment.model)) == 350_827
 
 
 def test_checkpoint_round_trip_and_tamper_detection(tmp_path: Path) -> None:

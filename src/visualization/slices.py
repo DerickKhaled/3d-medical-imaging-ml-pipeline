@@ -26,7 +26,7 @@ from src.visualization.scene import CaseScene, load_case  # noqa: E402
 def slice_figure(scene: CaseScene, out: Path) -> Path:
     nx, ny, nz = scene.image.dimensions
     image = np.asarray(scene.image.point_data["intensity"], dtype=np.float32).reshape(nz, ny, nx)
-    labels = np.asarray(scene.labels.point_data["label"]).reshape(nz, ny, nx)
+    labels = scene.label_array
     foreground = np.argwhere(labels > 0)
     cz, cy, cx = (
         foreground.mean(axis=0) if len(foreground) else np.array([nz, ny, nx]) / 2

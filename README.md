@@ -51,7 +51,25 @@ lifecycle around the model is easy to see and easy to review:
 
 ## Results
 
-RESULTS_PLACEHOLDER
+Measured on a 14-core laptop CPU (no GPU), model `v1.0` from `EXP-001`
+(3D U-Net, 350,827 parameters, 20 epochs, 55 min, seed 42; the git commit is in the
+experiment record):
+
+| Split | Cases | Mean Dice | Anterior Dice | Posterior Dice | Mean IoU |
+|---|---|---|---|---|---|
+| Validation (model selection, network space) | 26 | 0.876 | 0.884 | 0.869 | – |
+| **Test (held out, original scan geometry)** | **40** | **0.877** | **0.883** | **0.872** | **0.783** |
+
+Test precision/recall: anterior 0.864 / 0.907, posterior 0.873 / 0.875.
+Inference: ~110 ms network forward pass, ~0.5 s end-to-end per scan on CPU.
+For context, published state-of-the-art on this task (nnU-Net) is around 0.89–0.90 mean Dice
+on the challenge's hidden test set (not directly comparable to this split).
+
+**Reproducibility check on real data:** an interrupted run and its restart produced the
+identical epoch-1 loss (1.8197) and validation Dice (0.3964); a test asserts identical
+weights for repeated smoke runs.
+
+![slices](docs/images/slices.png)
 
 ## Quick start
 
@@ -71,7 +89,8 @@ make trace          # lineage of the prediction
 make test           # full test suite
 ```
 
-**Windows (PowerShell)**: every Makefile target is one `python -m …` command:
+**Windows (PowerShell)**: `.\scripts\run_pipeline.ps1` runs every step below in order
+(after the setup lines). Each Makefile target is one `python -m …` command:
 
 ```powershell
 py -3.12 -m venv .venv; .\.venv\Scripts\Activate.ps1
@@ -212,7 +231,30 @@ source scan, and **re-hashes every link** (prediction file, checkpoint, evaluati
 file, manifest content, preprocessing config). Exits non-zero if anything was
 modified. It also reports whether the input scan was part of the training data.
 
-TRACE_PLACEHOLDER
+Real output for the demo case (abridged):
+
+```
+Inference: INF-20261005-8f09b9            runtime_ms: 523.15   model_status_at_inference: production
+   ▼
+Model: v1.0 (unet3d-73d90382)              checkpoint_hash: 73d90382113a9096
+   promotions:
+     - new -> candidate: registered from EXP-001
+     - candidate -> validated: test-split evaluation meets the release gate
+     - validated -> production: approved for the demo release
+   ▼
+Evaluation: EVAL-20261005-d998cf           split: test   n_cases: 40   mean_dice: 0.8771
+   ▼
+Experiment: EXP-001                        git_commit: b96c31940ec8   seed: 42   best_epoch: 16
+   ▼
+Dataset: ds-msd-hippocampus-154afe58       scans: 260  {'train': 194, 'val': 26, 'test': 40}
+   ▼
+Preprocessing: pp-hippo-mri-a93bf23d       RAS, 1.0 mm, zscore, grid 48x64x48
+   ▼
+Source scan: 6157d1fe1d4a18ee              hippocampus_017.nii.gz  (split: test)
+
+Integrity checks: 9 PASS
+LINEAGE VERIFIED
+```
 
 ## Testing
 

@@ -25,7 +25,8 @@ class CaseScene:
     inference_id: str
     record: dict[str, Any]
     image: pv.ImageData  # the input scan, in physical coordinates
-    labels: pv.ImageData  # the predicted mask, same grid
+    labels: pv.ImageData  # the predicted mask: one cell per voxel, so colours are never blended
+    label_array: np.ndarray  # the predicted mask as (z, y, x) voxels
     meshes: dict[str, pv.PolyData]
     colors: dict[str, str]
     mesh_info: dict[str, dict[str, Any]]
@@ -64,6 +65,25 @@ def to_pyvista(image: sitk.Image, name: str) -> pv.ImageData:
     return grid
 
 
+def to_pyvista_voxels(image: sitk.Image, name: str) -> pv.ImageData:
+    """Label image -> grid with one *cell* per voxel.
+
+    Point data would be interpolated across voxel corners when rendered, blending a
+    structure's border with the background and drawing labels the model never
+    predicted. Cell data is shown exactly as predicted.
+    """
+    spacing = np.asarray(image.GetSpacing())
+    direction = np.asarray(image.GetDirection()).reshape(3, 3)
+    grid = pv.ImageData(
+        dimensions=np.asarray(image.GetSize()) + 1,
+        spacing=spacing,
+        origin=np.asarray(image.GetOrigin()) - direction @ (spacing / 2),  # voxel corners
+        direction_matrix=direction,
+    )
+    grid.cell_data[name] = sitk.GetArrayFromImage(image).ravel()
+    return grid
+
+
 def load_case(inference_id: str, paths: ArtifactPaths, image_path: Path | None = None) -> CaseScene:
     run_dir = paths.inference_run(inference_id)
     record = read_json(run_dir / "record.json")
@@ -78,7 +98,8 @@ def load_case(inference_id: str, paths: ArtifactPaths, image_path: Path | None =
     if sha256_file(source) != record["input_hash"]:
         raise ValueError(f"{source} is not the scan recorded for {inference_id} (hash mismatch)")
     image = to_pyvista(sitk.ReadImage(str(source)), "intensity")
-    labels = to_pyvista(sitk.ReadImage(str(run_dir / record["prediction_file"])), "label")
+    mask = sitk.ReadImage(str(run_dir / record["prediction_file"]))
+    labels = to_pyvista_voxels(mask, "label")
 
     meshes, colors, info = {}, {}, {}
     for structure in read_json(meshes_file)["structures"]:
@@ -88,4 +109,6 @@ def load_case(inference_id: str, paths: ArtifactPaths, image_path: Path | None =
         meshes[name] = pv.read(run_dir / "meshes" / any_format["file"])
         colors[name] = STRUCTURE_COLORS[(structure["label"] - 1) % len(STRUCTURE_COLORS)]
         info[name] = structure
-    return CaseScene(inference_id, record, image, labels, meshes, colors, info)
+    return CaseScene(
+        inference_id, record, image, labels, sitk.GetArrayFromImage(mask), meshes, colors, info
+    )
