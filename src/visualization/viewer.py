@@ -32,8 +32,12 @@ TEXT = "#e8ecf4"
 
 
 def build_plotter(scene: CaseScene, off_screen: bool = False) -> pv.Plotter:
-    plotter = pv.Plotter(shape=(1, 2), window_size=(1600, 860), off_screen=off_screen,
-                         title=f"3D Medical Imaging ML Pipeline - {scene.inference_id}")
+    plotter = pv.Plotter(
+        shape=(1, 2),
+        window_size=(1600, 860),
+        off_screen=off_screen,
+        title=f"3D Medical Imaging ML Pipeline - {scene.inference_id}",
+    )
     plotter.set_background(BACKGROUND)
     _add_3d_view(plotter, scene)
     _add_slice_view(plotter, scene)
@@ -44,14 +48,16 @@ def build_plotter(scene: CaseScene, off_screen: bool = False) -> pv.Plotter:
 def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     plotter.subplot(0, 0)
     actors = {
-        name: plotter.add_mesh(mesh, color=scene.colors[name], smooth_shading=True,
-                               specular=0.3, name=name)
+        name: plotter.add_mesh(
+            mesh, color=scene.colors[name], smooth_shading=True, specular=0.3, name=name
+        )
         for name, mesh in scene.meshes.items()
     }
     center = _segmentation_center(scene)
     slices = scene.image.slice_orthogonal(*center)
-    slice_actor = plotter.add_mesh(slices, cmap="gray", show_scalar_bar=False, opacity=0.9,
-                                   name="scan_slices")
+    slice_actor = plotter.add_mesh(
+        slices, cmap="gray", show_scalar_bar=False, opacity=0.9, name="scan_slices"
+    )
 
     # One checkbox per structure, plus one for the scan slices.
     toggles = [(name, actors[name], scene.colors[name]) for name in scene.meshes]
@@ -59,8 +65,12 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     for row, (label, actor, color) in enumerate(toggles):
         y = 12 + row * 42
         plotter.add_checkbox_button_widget(
-            lambda visible, a=actor: a.SetVisibility(visible), value=True,
-            position=(12, y), size=30, color_on=color, color_off="#3a4255",
+            lambda visible, a=actor: a.SetVisibility(visible),
+            value=True,
+            position=(12, y),
+            size=30,
+            color_on=color,
+            color_off="#3a4255",
         )
         info = scene.mesh_info.get(label)
         suffix = f"  ({info['mesh_volume_ml']:.2f} mL)" if info else ""
@@ -71,8 +81,14 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
             actor.GetProperty().SetOpacity(value)
 
     plotter.add_slider_widget(
-        set_opacity, rng=[0.1, 1.0], value=1.0, title="Structure opacity",
-        pointa=(0.62, 0.08), pointb=(0.95, 0.08), style="modern", color=TEXT,
+        set_opacity,
+        rng=[0.1, 1.0],
+        value=1.0,
+        title="Structure opacity",
+        pointa=(0.62, 0.08),
+        pointb=(0.95, 0.08),
+        style="modern",
+        color=TEXT,
     )
 
     distance_text = plotter.add_text("", position="lower_right", font_size=10, color="#ffd166")
@@ -82,13 +98,22 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     ruler.Off()
     y = 12 + len(toggles) * 42
     plotter.add_checkbox_button_widget(
-        lambda on: ruler.On() if on else ruler.Off(), value=False,
-        position=(12, y), size=30, color_on="#ffd166", color_off="#3a4255",
+        lambda on: ruler.On() if on else ruler.Off(),
+        value=False,
+        position=(12, y),
+        size=30,
+        color_on="#ffd166",
+        color_off="#3a4255",
     )
     plotter.add_text("Measure (click two points)", position=(52, y + 4), font_size=10, color=TEXT)
 
-    plotter.add_text("\n".join(scene.summary_lines()), position="upper_left", font_size=9,
-                     color=TEXT, font="courier")
+    plotter.add_text(
+        "\n".join(scene.summary_lines()),
+        position="upper_left",
+        font_size=9,
+        color=TEXT,
+        font="courier",
+    )
     plotter.add_axes(color=TEXT)
     plotter.camera_position = "iso"
     plotter.reset_camera()
@@ -102,19 +127,36 @@ def _add_slice_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     def show_slice(value: float) -> None:
         k = int(round(value))
         extent = (0, nx - 1, 0, ny - 1, k, k)
-        plotter.add_mesh(scene.image.extract_subset(extent), cmap="gray", name="slice",
-                         show_scalar_bar=False)
+        plotter.add_mesh(
+            scene.image.extract_subset(extent), cmap="gray", name="slice", show_scalar_bar=False
+        )
         overlay = scene.labels.extract_subset(extent).threshold(0.5, scalars="label")
-        plotter.add_mesh(overlay, scalars="label", cmap=colors, clim=[1, max(len(colors), 2)],
-                         opacity=0.45, name="overlay", show_scalar_bar=False)
+        plotter.add_mesh(
+            overlay,
+            scalars="label",
+            cmap=colors,
+            clim=[1, max(len(colors), 2)],
+            opacity=0.45,
+            name="overlay",
+            show_scalar_bar=False,
+        )
 
     start = int(round(_segmentation_center_index(scene)[2]))
     show_slice(start)
     plotter.add_slider_widget(
-        show_slice, rng=[0, nz - 1], value=start, title="Slice", fmt="%.0f",
-        pointa=(0.08, 0.08), pointb=(0.92, 0.08), style="modern", color=TEXT,
+        show_slice,
+        rng=[0, nz - 1],
+        value=start,
+        title="Slice",
+        fmt="%.0f",
+        pointa=(0.08, 0.08),
+        pointb=(0.92, 0.08),
+        style="modern",
+        color=TEXT,
     )
-    plotter.add_text("Scan + predicted segmentation", position="upper_left", font_size=11, color=TEXT)
+    plotter.add_text(
+        "Scan + predicted segmentation", position="upper_left", font_size=11, color=TEXT
+    )
     plotter.view_xy()
     plotter.reset_camera()
 
@@ -130,7 +172,7 @@ def _segmentation_center_index(scene: CaseScene) -> np.ndarray:
 def _segmentation_center(scene: CaseScene) -> tuple[float, float, float]:
     """Physical point where the three scan slices cross: the centre of the structures."""
     if not scene.meshes:
-        return tuple(scene.image.center)  # type: ignore[return-value]
+        return tuple(scene.image.center)
     points = np.vstack([mesh.points for mesh in scene.meshes.values()])
     x, y, z = points.mean(axis=0)
     return float(x), float(y), float(z)
@@ -139,10 +181,18 @@ def _segmentation_center(scene: CaseScene) -> tuple[float, float, float]:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Interactive 3D viewer for one inference case.")
     parser.add_argument("--case", "--inference-id", dest="case", required=True)
-    parser.add_argument("--image", type=Path, default=None,
-                        help="scan location if it moved since inference (hash-checked)")
-    parser.add_argument("--screenshot", type=Path, default=None,
-                        help="render off-screen to this PNG instead of opening a window")
+    parser.add_argument(
+        "--image",
+        type=Path,
+        default=None,
+        help="scan location if it moved since inference (hash-checked)",
+    )
+    parser.add_argument(
+        "--screenshot",
+        type=Path,
+        default=None,
+        help="render off-screen to this PNG instead of opening a window",
+    )
     parser.add_argument("--artifacts-dir", default=Path("artifacts"), type=Path)
     args = parser.parse_args(argv)
 

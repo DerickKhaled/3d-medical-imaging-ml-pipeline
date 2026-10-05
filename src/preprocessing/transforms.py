@@ -73,14 +73,17 @@ def crop_or_pad(
         slices.append(slice(start, start + kept))
         pads.append((before, target - kept - before))
     out = np.pad(array[tuple(slices)], pads, mode="constant", constant_values=0)
-    return out, tuple(crop_start), tuple(pad_before)  # type: ignore[return-value]
+    return out, tuple(crop_start), tuple(pad_before)
 
 
 def undo_crop_or_pad(array: np.ndarray, grid: GridRecord) -> np.ndarray:
     out = np.zeros(grid.resampled_shape_zyx, dtype=array.dtype)
     src, dst = [], []
     for length, target, start, before in zip(
-        grid.resampled_shape_zyx, array.shape, grid.crop_start_zyx, grid.pad_before_zyx,
+        grid.resampled_shape_zyx,
+        array.shape,
+        grid.crop_start_zyx,
+        grid.pad_before_zyx,
         strict=True,
     ):
         kept = min(length, target)
@@ -111,7 +114,9 @@ def normalize_intensity(array: np.ndarray, config: IntensityConfig) -> np.ndarra
 # --- full pipeline ----------------------------------------------------------------
 
 
-def preprocess_image(image: sitk.Image, config: PreprocessingConfig) -> tuple[np.ndarray, GridRecord]:
+def preprocess_image(
+    image: sitk.Image, config: PreprocessingConfig
+) -> tuple[np.ndarray, GridRecord]:
     """Return a (1, Z, Y, X) float32 array ready for the network, plus its grid record."""
     resampled = resample(reorient(image, config.orientation), config.target_spacing_mm, False)
     array = normalize_intensity(sitk.GetArrayFromImage(resampled), config.intensity)
@@ -120,7 +125,7 @@ def preprocess_image(image: sitk.Image, config: PreprocessingConfig) -> tuple[np
 
     reference = sitk.Image(resampled.GetSize(), sitk.sitkUInt8)
     reference.CopyInformation(resampled)
-    grid = GridRecord(reference, crop_start, pad_before, array.shape)  # type: ignore[arg-type]
+    grid = GridRecord(reference, crop_start, pad_before, array.shape)
     return fitted[np.newaxis].astype(np.float32), grid
 
 

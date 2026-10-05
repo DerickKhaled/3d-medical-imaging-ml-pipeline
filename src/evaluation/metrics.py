@@ -51,7 +51,9 @@ class OverlapCounts:
 
 def overlap_counts(prediction: np.ndarray, reference: np.ndarray, label: int) -> OverlapCounts:
     if prediction.shape != reference.shape:
-        raise ValueError(f"shape mismatch: prediction {prediction.shape} vs reference {reference.shape}")
+        raise ValueError(
+            f"shape mismatch: prediction {prediction.shape} vs reference {reference.shape}"
+        )
     pred, ref = prediction == label, reference == label
     return OverlapCounts(
         tp=int(np.count_nonzero(pred & ref)),

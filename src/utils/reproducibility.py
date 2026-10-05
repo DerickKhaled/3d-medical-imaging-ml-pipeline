@@ -43,7 +43,10 @@ def code_version(repo_dir: Path | None = None) -> dict[str, object]:
         ).stdout.strip()
         status = subprocess.run(
             ["git", "status", "--porcelain", "--untracked-files=no"],
-            cwd=cwd, capture_output=True, text=True, check=True,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
         return {"git_commit": commit, "git_dirty": bool(status)}
     except (OSError, subprocess.CalledProcessError):

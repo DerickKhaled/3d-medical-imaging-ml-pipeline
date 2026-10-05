@@ -19,9 +19,17 @@ def registry(pipeline_run, tmp_path: Path) -> ModelRegistry:  # type: ignore[no-
 
 def test_registered_entry_is_complete(pipeline_run) -> None:  # type: ignore[no-untyped-def]
     entry = ModelRegistry(pipeline_run.paths).get("v1.0")
-    for key in ("model_id", "model_version", "checkpoint_hash", "dataset_version",
-                "preprocessing_version", "training_config", "evaluation_metrics",
-                "created_at", "status"):
+    for key in (
+        "model_id",
+        "model_version",
+        "checkpoint_hash",
+        "dataset_version",
+        "preprocessing_version",
+        "training_config",
+        "evaluation_metrics",
+        "created_at",
+        "status",
+    ):
         assert entry[key] is not None, key
     assert entry["status"] == "production"
     assert [h["to"] for h in entry["history"]] == ["candidate", "validated", "production"]
@@ -56,7 +64,9 @@ def test_release_gate_enforces_thresholds(registry: ModelRegistry, pipeline_run)
     assert registry.get("v2.0")["status"] == "candidate"  # nothing changed
 
 
-def test_new_production_model_retires_the_previous_one(registry: ModelRegistry, pipeline_run) -> None:  # type: ignore[no-untyped-def]
+def test_new_production_model_retires_the_previous_one(
+    registry: ModelRegistry, pipeline_run
+) -> None:  # type: ignore[no-untyped-def]
     registry.register(registry.get("v1.0")["experiment_id"], "v2.0")
     evaluation_file = Path(registry.get("v1.0")["evaluation_metrics"]["evaluation_file"])
     registry.attach_evaluation("v2.0", pipeline_run.evaluation, evaluation_file)

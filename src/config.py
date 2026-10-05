@@ -205,7 +205,7 @@ def load_experiment(
             f"model.num_classes={experiment.model.num_classes} but the dataset defines "
             f"{len(data.class_names)} classes"
         )
-    divisor = 2 ** experiment.model.depth
+    divisor = 2**experiment.model.depth
     if any(size % divisor for size in preprocessing.crop_or_pad_size_xyz):
         raise ValueError(
             f"crop_or_pad_size_xyz {preprocessing.crop_or_pad_size_xyz} must be divisible by "

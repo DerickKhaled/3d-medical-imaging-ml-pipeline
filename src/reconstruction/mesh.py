@@ -70,8 +70,9 @@ def build_meshes(inference_id: str, paths: ArtifactPaths, config: MeshConfig) ->
     voxel_ml = float(np.prod(mask.GetSpacing())) / 1000.0
     structures = []
     for name, info in record["structures"].items():
-        mesh = mask_to_mesh(voxels == info["label"], mask, config.marching_cubes_step,
-                            config.smoothing_iterations)
+        mesh = mask_to_mesh(
+            voxels == info["label"], mask, config.marching_cubes_step, config.smoothing_iterations
+        )
         if mesh is None:
             log.info("%s: not present in the prediction, no mesh", name)
             continue
@@ -80,17 +81,21 @@ def build_meshes(inference_id: str, paths: ArtifactPaths, config: MeshConfig) ->
             path = out_dir / f"{name}.{fmt}"
             mesh.export(path)
             files[fmt] = {"file": path.name, "sha256": sha256_file(path)}
-        structures.append({
-            "name": name,
-            "label": info["label"],
-            "files": files,
-            "vertices": int(len(mesh.vertices)),
-            "faces": int(len(mesh.faces)),
-            "watertight": bool(mesh.is_watertight),
-            "surface_area_mm2": round(float(mesh.area), 2),
-            "mesh_volume_ml": round(float(mesh.volume) / 1000.0, 4),
-            "voxel_volume_ml": round(int(np.count_nonzero(voxels == info["label"])) * voxel_ml, 4),
-        })
+        structures.append(
+            {
+                "name": name,
+                "label": info["label"],
+                "files": files,
+                "vertices": int(len(mesh.vertices)),
+                "faces": int(len(mesh.faces)),
+                "watertight": bool(mesh.is_watertight),
+                "surface_area_mm2": round(float(mesh.area), 2),
+                "mesh_volume_ml": round(float(mesh.volume) / 1000.0, 4),
+                "voxel_volume_ml": round(
+                    int(np.count_nonzero(voxels == info["label"])) * voxel_ml, 4
+                ),
+            }
+        )
 
     mesh_record = {
         "inference_id": inference_id,
@@ -111,12 +116,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--artifacts-dir", default=Path("artifacts"), type=Path)
     args = parser.parse_args(argv)
 
-    result = build_meshes(args.inference_id, ArtifactPaths(args.artifacts_dir),
-                          load_config(args.config, MeshConfig))
+    result = build_meshes(
+        args.inference_id, ArtifactPaths(args.artifacts_dir), load_config(args.config, MeshConfig)
+    )
     for s in result["structures"]:
-        print(f"{s['name']:<24} {s['vertices']:>6} vertices  {s['mesh_volume_ml']:.3f} mL "
-              f"(voxels {s['voxel_volume_ml']:.3f} mL)  watertight={s['watertight']}  "
-              f"-> {', '.join(f['file'] for f in s['files'].values())}")
+        print(
+            f"{s['name']:<24} {s['vertices']:>6} vertices  {s['mesh_volume_ml']:.3f} mL "
+            f"(voxels {s['voxel_volume_ml']:.3f} mL)  watertight={s['watertight']}  "
+            f"-> {', '.join(f['file'] for f in s['files'].values())}"
+        )
 
 
 if __name__ == "__main__":

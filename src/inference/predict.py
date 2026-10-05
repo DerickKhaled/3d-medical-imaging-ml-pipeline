@@ -55,7 +55,9 @@ class LoadedModel:
     device: torch.device
 
 
-def load_registered_model(registry: ModelRegistry, version: str, device: torch.device) -> LoadedModel:
+def load_registered_model(
+    registry: ModelRegistry, version: str, device: torch.device
+) -> LoadedModel:
     entry = registry.get(version)
     network, metadata = load_checkpoint(
         registry.checkpoint_path(entry), device, expected_hash=entry["checkpoint_hash"]
@@ -123,8 +125,12 @@ def structure_summary(mask: sitk.Image, class_names: dict[int, str]) -> dict[str
         if label == 0:
             continue
         count = int(np.count_nonzero(voxels == label))
-        summary[name] = {"label": label, "voxels": count, "volume_ml": round(count * voxel_ml, 4),
-                         "detected": count > 0}
+        summary[name] = {
+            "label": label,
+            "voxels": count,
+            "volume_ml": round(count * voxel_ml, 4),
+            "detected": count > 0,
+        }
     return summary
 
 
@@ -144,7 +150,9 @@ def run_inference(
     prediction_path = save_nifti(mask, run_dir / "segmentation.nii.gz")
     entry = model.entry
     if entry["status"] != "production":
-        log.warning("model %s has status %r (not production)", entry["model_version"], entry["status"])
+        log.warning(
+            "model %s has status %r (not production)", entry["model_version"], entry["status"]
+        )
 
     record = {
         "inference_id": inference_id,
@@ -177,7 +185,9 @@ def run_inference(
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Segment one CT/MRI volume with a registered model.")
+    parser = argparse.ArgumentParser(
+        description="Segment one CT/MRI volume with a registered model."
+    )
     parser.add_argument("--input", required=True, type=Path, help="NIfTI file or DICOM directory")
     parser.add_argument("--model-version", required=True, help="e.g. v1.0, or 'production'")
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
@@ -187,8 +197,10 @@ def main(argv: list[str] | None = None) -> None:
     paths = ArtifactPaths(args.artifacts_dir)
     record = run_inference(args.input, args.model_version, paths, args.device)
     print(f"inference_id: {record['inference_id']}")
-    print(f"model: {record['model_version']} ({record['model_status_at_inference']}) | "
-          f"runtime {record['runtime_ms']:.0f} ms (network {record['forward_ms']:.0f} ms)")
+    print(
+        f"model: {record['model_version']} ({record['model_status_at_inference']}) | "
+        f"runtime {record['runtime_ms']:.0f} ms (network {record['forward_ms']:.0f} ms)"
+    )
     for name, info in record["structures"].items():
         print(f"  {name:<24} {info['volume_ml']:.3f} mL  detected={info['detected']}")
     print(f"output: {paths.inference_run(record['inference_id'])}")

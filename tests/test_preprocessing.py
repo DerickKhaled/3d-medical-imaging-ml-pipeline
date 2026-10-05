@@ -52,7 +52,9 @@ def test_resampling_respects_physical_size() -> None:
 
 
 def test_label_resampling_keeps_integer_classes() -> None:
-    label = sitk.GetImageFromArray(np.random.default_rng(0).integers(0, 3, (10, 10, 10)).astype(np.uint8))
+    label = sitk.GetImageFromArray(
+        np.random.default_rng(0).integers(0, 3, (10, 10, 10)).astype(np.uint8)
+    )
     resampled = resample(label, (0.5, 0.5, 0.5), is_label=True)
     assert set(np.unique(sitk.GetArrayFromImage(resampled))) <= {0, 1, 2}
 

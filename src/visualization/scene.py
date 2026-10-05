@@ -16,7 +16,7 @@ import SimpleITK as sitk
 from src.lineage.records import ArtifactPaths, read_json
 from src.utils.hashing import sha256_file
 
-# One fixed colour per structure label, chosen to be distinguishable for common colour-vision deficiencies.
+# One fixed colour per structure label; distinguishable under common colour-vision deficiencies.
 STRUCTURE_COLORS = ["#e8743b", "#19a979", "#5899da", "#bf399e", "#945ecf", "#13a4b4"]
 
 
@@ -24,8 +24,8 @@ STRUCTURE_COLORS = ["#e8743b", "#19a979", "#5899da", "#bf399e", "#945ecf", "#13a
 class CaseScene:
     inference_id: str
     record: dict[str, Any]
-    image: pv.ImageData        # the input scan, in physical coordinates
-    labels: pv.ImageData       # the predicted mask, same grid
+    image: pv.ImageData  # the input scan, in physical coordinates
+    labels: pv.ImageData  # the predicted mask, same grid
     meshes: dict[str, pv.PolyData]
     colors: dict[str, str]
     mesh_info: dict[str, dict[str, Any]]
@@ -43,8 +43,11 @@ class CaseScene:
             "Structures:",
         ]
         for name, info in r["structures"].items():
-            lines.append(f"  {name}: {info['volume_ml']:.2f} mL" if info["detected"]
-                         else f"  {name}: not detected")
+            lines.append(
+                f"  {name}: {info['volume_ml']:.2f} mL"
+                if info["detected"]
+                else f"  {name}: not detected"
+            )
         return lines
 
 
@@ -80,7 +83,8 @@ def load_case(inference_id: str, paths: ArtifactPaths, image_path: Path | None =
     meshes, colors, info = {}, {}, {}
     for structure in read_json(meshes_file)["structures"]:
         name = structure["name"]
-        any_format = next(iter(structure["files"].values()))  # STL, PLY and OBJ hold the same surface
+        # STL, PLY and OBJ hold the same surface; load whichever was written first.
+        any_format = next(iter(structure["files"].values()))
         meshes[name] = pv.read(run_dir / "meshes" / any_format["file"])
         colors[name] = STRUCTURE_COLORS[(structure["label"] - 1) % len(STRUCTURE_COLORS)]
         info[name] = structure

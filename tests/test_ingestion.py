@@ -95,7 +95,9 @@ def test_malformed_volumes_are_rejected(tmp_path: Path, data_config: DataConfig)
     nan_volume = Volume(sitk.GetImageFromArray(with_nan), tmp_path / "nan", "0" * 64)
     assert any("NaN" in p for p in image_problems(nan_volume, limits))
 
-    coarse = _volume(tmp_path, rng.random((20, 20, 20), dtype=np.float32), (1, 1, 9), "coarse.nii.gz")
+    coarse = _volume(
+        tmp_path, rng.random((20, 20, 20), dtype=np.float32), (1, 1, 9), "coarse.nii.gz"
+    )
     assert any("spacing" in p for p in image_problems(coarse, limits))
 
     flat = sitk.GetImageFromArray(rng.random((20, 20), dtype=np.float32))
@@ -127,8 +129,17 @@ def test_manifest_records_and_version(data_config: DataConfig) -> None:
     assert manifest["dataset_version"].startswith("ds-synthetic-")
     record = manifest["records"][0]
     assert set(record) == {
-        "sample_id", "source_path", "source_hash", "label_path", "label_hash", "size_xyz",
-        "spacing_xyz_mm", "modality", "dataset_version", "split", "timestamp",
+        "sample_id",
+        "source_path",
+        "source_hash",
+        "label_path",
+        "label_hash",
+        "size_xyz",
+        "spacing_xyz_mm",
+        "modality",
+        "dataset_version",
+        "split",
+        "timestamp",
     }
     assert record["sample_id"] == f"s-{record['source_hash'][:12]}"
     assert not Path(record["source_path"]).is_absolute()  # no machine paths in lineage

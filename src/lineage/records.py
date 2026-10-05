@@ -4,10 +4,10 @@ Every stage writes a plain JSON record. Records reference each other by ID and
 by content hash, which is what ``src.lineage.trace`` walks:
 
     inference record ──model_version──▶ registry entry ──experiment_id──▶ experiment record
-            │                                 │                                  │
-       input_hash                     checkpoint_hash                 dataset_version / preprocessing_version
-            │                                                                    │
-            └──────────────── found in ──▶ dataset manifest ◀────────────────────┘
+           │                                  │                                 │
+      input_hash                       checkpoint_hash                   dataset_version
+           │                                                                    │
+           └───────────────── found in ──▶ dataset manifest ◀───────────────────┘
 
 There is no database: the artifacts directory *is* the store. It can be
 archived, diffed and reviewed with ordinary tools.

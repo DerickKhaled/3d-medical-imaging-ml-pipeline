@@ -46,3 +46,9 @@ python_version = "3.12"
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# PyVista's method decorators confuse mypy ("Missing positional argument self");
+# treat it as untyped rather than sprinkling ignores through the viewer.
+module = ["pyvista", "pyvista.*"]
+follow_imports = "skip"

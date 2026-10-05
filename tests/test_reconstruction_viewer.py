@@ -26,7 +26,9 @@ def _reference(spacing=(0.5, 0.5, 0.5), origin=(10.0, -20.0, 5.0), direction=Non
 
 @pytest.mark.parametrize("direction", [None, (-1, 0, 0, 0, -1, 0, 0, 0, 1)])
 def test_sphere_mesh_is_closed_outward_and_in_millimetres(direction) -> None:  # type: ignore[no-untyped-def]
-    mesh = mask_to_mesh(_sphere(12), _reference(direction=direction), step=1, smoothing_iterations=10)
+    mesh = mask_to_mesh(
+        _sphere(12), _reference(direction=direction), step=1, smoothing_iterations=10
+    )
     assert mesh is not None
     assert mesh.is_watertight
     expected_mm3 = 4 / 3 * np.pi * (12 * 0.5) ** 3  # radius 12 voxels x 0.5 mm
@@ -53,8 +55,11 @@ def test_pipeline_meshes_exist_in_all_formats(pipeline_run) -> None:  # type: ig
 
 
 def test_viewer_scene_loads_with_provenance(pipeline_run) -> None:  # type: ignore[no-untyped-def]
-    scene = load_case(pipeline_run.inference["inference_id"], pipeline_run.paths,
-                      image_path=pipeline_run.test_scan)
+    scene = load_case(
+        pipeline_run.inference["inference_id"],
+        pipeline_run.paths,
+        image_path=pipeline_run.test_scan,
+    )
     assert set(scene.meshes) == {s["name"] for s in pipeline_run.meshes["structures"]}
     assert scene.image.dimensions == sitk.ReadImage(str(pipeline_run.test_scan)).GetSize()
     summary = "\n".join(scene.summary_lines())
@@ -75,8 +80,11 @@ def test_viewer_refuses_a_different_scan(pipeline_run, tmp_path: Path) -> None: 
 def test_viewer_renders_offscreen(pipeline_run, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     from src.visualization.viewer import build_plotter
 
-    scene = load_case(pipeline_run.inference["inference_id"], pipeline_run.paths,
-                      image_path=pipeline_run.test_scan)
+    scene = load_case(
+        pipeline_run.inference["inference_id"],
+        pipeline_run.paths,
+        image_path=pipeline_run.test_scan,
+    )
     plotter = build_plotter(scene, off_screen=True)
     out = tmp_path / "viewer.png"
     plotter.screenshot(str(out))

@@ -172,19 +172,27 @@ class ModelRegistry:
         if evaluation["dataset_version"] != entry["dataset_version"]:
             problems.append("evaluation used a different dataset version")
         if evaluation["split"] != release.required_split:
-            problems.append(f"evaluation split is {evaluation['split']}, gate requires "
-                            f"{release.required_split}")
+            problems.append(
+                f"evaluation split is {evaluation['split']}, gate requires {release.required_split}"
+            )
         if evaluation["n_cases"] < release.min_cases:
             problems.append(f"{evaluation['n_cases']} cases < required {release.min_cases}")
         if evaluation["dice"] < release.min_mean_dice:
-            problems.append(f"mean Dice {evaluation['dice']:.4f} < required {release.min_mean_dice}")
+            problems.append(
+                f"mean Dice {evaluation['dice']:.4f} < required {release.min_mean_dice}"
+            )
         if problems:
             raise RegistryError("release gate failed: " + "; ".join(problems))
 
     @staticmethod
     def _event(from_status: str | None, to_status: str, reason: str) -> dict[str, Any]:
-        return {"from": from_status, "to": to_status, "at": utc_now(),
-                "by": getpass.getuser(), "reason": reason}
+        return {
+            "from": from_status,
+            "to": to_status,
+            "at": utc_now(),
+            "by": getpass.getuser(),
+            "reason": reason,
+        }
 
     @staticmethod
     def _find(entries: list[dict[str, Any]], version: str) -> dict[str, Any]:
@@ -201,12 +209,16 @@ class ModelRegistry:
 
 
 def _print_table(entries: list[dict[str, Any]]) -> None:
-    print(f"{'VERSION':<10}{'STATUS':<12}{'MODEL_ID':<20}{'EXPERIMENT':<12}{'TEST DICE':<11}DATASET")
+    print(
+        f"{'VERSION':<10}{'STATUS':<12}{'MODEL_ID':<20}{'EXPERIMENT':<12}{'TEST DICE':<11}DATASET"
+    )
     for e in entries:
         evaluation = e["evaluation_metrics"]
         dice = f"{evaluation['dice']:.4f}" if evaluation else "-"
-        print(f"{e['model_version']:<10}{e['status']:<12}{e['model_id']:<20}"
-              f"{e['experiment_id']:<12}{dice:<11}{e['dataset_version']}")
+        print(
+            f"{e['model_version']:<10}{e['status']:<12}{e['model_id']:<20}"
+            f"{e['experiment_id']:<12}{dice:<11}{e['dataset_version']}"
+        )
 
 
 def main(argv: list[str] | None = None) -> None:

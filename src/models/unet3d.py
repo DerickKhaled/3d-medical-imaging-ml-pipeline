@@ -62,7 +62,9 @@ class UNet3D(nn.Module):
             skips.append(x)
             x = self.pool(x)
         x = self.bottleneck(x)
-        for upsample, decoder, skip in zip(self.upsamplers, self.decoders, reversed(skips), strict=True):
+        for upsample, decoder, skip in zip(
+            self.upsamplers, self.decoders, reversed(skips), strict=True
+        ):
             x = decoder(torch.cat([upsample(x), skip], dim=1))
         return self.head(x)
 

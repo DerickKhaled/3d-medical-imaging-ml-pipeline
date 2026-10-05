@@ -47,8 +47,13 @@ def evaluate(
     records = [r for r in manifest["records"] if r["split"] == split]
     if not records:
         raise ValueError(f"split {split!r} is empty in {entry['dataset_version']}")
-    log.info("evaluating %s on %d %s cases of %s", entry["model_version"], len(records), split,
-             entry["dataset_version"])
+    log.info(
+        "evaluating %s on %d %s cases of %s",
+        entry["model_version"],
+        len(records),
+        split,
+        entry["dataset_version"],
+    )
 
     # One untimed warm-up pass so the first case does not carry one-off setup cost.
     segment(load_nifti(data_root / records[0]["source_path"]).image, model)
@@ -68,8 +73,13 @@ def evaluate(
         metrics = per_class_metrics(
             sitk.GetArrayFromImage(mask), label.to_numpy().astype(np.uint8), model.class_names
         )
-        cases.append({"sample_id": record["sample_id"], "source_hash": record["source_hash"],
-                      "per_class": metrics})
+        cases.append(
+            {
+                "sample_id": record["sample_id"],
+                "source_hash": record["source_hash"],
+                "per_class": metrics,
+            }
+        )
 
     class_names = [name for label, name in sorted(model.class_names.items()) if label]
     per_class = {
@@ -114,21 +124,35 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Evaluate a registered model.")
     parser.add_argument("--model-version", required=True)
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
-    parser.add_argument("--data-root", type=Path, default=None,
-                        help="dataset root on this machine (default: from the experiment record)")
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        default=None,
+        help="dataset root on this machine (default: from the experiment record)",
+    )
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--artifacts-dir", default=Path("artifacts"), type=Path)
     args = parser.parse_args(argv)
 
     result, path = evaluate(
-        args.model_version, args.split, ArtifactPaths(args.artifacts_dir), args.data_root, args.device
+        args.model_version,
+        args.split,
+        ArtifactPaths(args.artifacts_dir),
+        args.data_root,
+        args.device,
     )
-    print(f"evaluation_id: {result['evaluation_id']}  ({result['n_cases']} {result['split']} cases)")
-    print(f"mean dice {result['dice']:.4f} | mean IoU {result['iou']:.4f} | "
-          f"forward {result['inference_ms']['forward_mean']:.1f} ms/case")
+    print(
+        f"evaluation_id: {result['evaluation_id']}  ({result['n_cases']} {result['split']} cases)"
+    )
+    print(
+        f"mean dice {result['dice']:.4f} | mean IoU {result['iou']:.4f} | "
+        f"forward {result['inference_ms']['forward_mean']:.1f} ms/case"
+    )
     for name, metrics in result["per_class"].items():
-        print(f"  {name:<24} dice {metrics['dice']:.4f}  iou {metrics['iou']:.4f}  "
-              f"precision {metrics['precision']:.4f}  recall {metrics['recall']:.4f}")
+        print(
+            f"  {name:<24} dice {metrics['dice']:.4f}  iou {metrics['iou']:.4f}  "
+            f"precision {metrics['precision']:.4f}  recall {metrics['recall']:.4f}"
+        )
     print(f"written: {path}")
 
 

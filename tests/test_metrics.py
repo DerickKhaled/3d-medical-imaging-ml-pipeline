@@ -6,9 +6,9 @@ from src.evaluation.metrics import mean_ignoring_none, overlap_counts, per_class
 
 def test_known_overlap() -> None:
     reference = np.zeros((4, 4, 4), np.uint8)
-    reference[:2] = 1                      # 32 voxels
+    reference[:2] = 1  # 32 voxels
     prediction = np.zeros_like(reference)
-    prediction[1:3] = 1                    # 32 voxels, 16 overlapping
+    prediction[1:3] = 1  # 32 voxels, 16 overlapping
     counts = overlap_counts(prediction, reference, label=1)
     assert (counts.tp, counts.fp, counts.fn) == (16, 16, 16)
     assert counts.dice == pytest.approx(0.5)
@@ -24,7 +24,7 @@ def test_perfect_and_empty_cases() -> None:
     assert perfect.dice == perfect.iou == perfect.precision == perfect.recall == 1.0
 
     both_empty = overlap_counts(mask, mask, label=1)
-    assert both_empty.dice == 1.0 and both_empty.iou == 1.0       # agreement on absence
+    assert both_empty.dice == 1.0 and both_empty.iou == 1.0  # agreement on absence
     assert both_empty.precision is None and both_empty.recall is None  # undefined, not faked
 
     missed = overlap_counts(np.zeros_like(mask), mask, label=2)

@@ -75,4 +75,7 @@ def ensure_processed(
 
 
 def sample_file(paths: ArtifactPaths, index: dict[str, Any], sample_id: str) -> Path:
-    return paths.processed(index["dataset_version"], index["preprocessing_version"]) / f"{sample_id}.npz"
+    return (
+        paths.processed(index["dataset_version"], index["preprocessing_version"])
+        / f"{sample_id}.npz"
+    )

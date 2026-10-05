@@ -16,8 +16,17 @@ from src.utils.hashing import sha256_array
 
 def test_inference_record_and_output(pipeline_run) -> None:  # type: ignore[no-untyped-def]
     record = pipeline_run.inference
-    for key in ("inference_id", "input_hash", "model_version", "dataset_version",
-                "preprocessing_version", "prediction_hash", "runtime_ms", "device", "timestamp"):
+    for key in (
+        "inference_id",
+        "input_hash",
+        "model_version",
+        "dataset_version",
+        "preprocessing_version",
+        "prediction_hash",
+        "runtime_ms",
+        "device",
+        "timestamp",
+    ):
         assert record[key] is not None, key
 
     run_dir = pipeline_run.paths.inference_run(record["inference_id"])
@@ -39,8 +48,9 @@ def test_evaluation_output(pipeline_run) -> None:  # type: ignore[no-untyped-def
 
 
 def test_malformed_input_is_rejected_without_a_record(pipeline_run, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
-    constant = save_nifti(sitk.GetImageFromArray(np.zeros((30, 30, 30), np.float32)),
-                          tmp_path / "blank.nii.gz")
+    constant = save_nifti(
+        sitk.GetImageFromArray(np.zeros((30, 30, 30), np.float32)), tmp_path / "blank.nii.gz"
+    )
     before = set(pipeline_run.paths.inference.iterdir())
     with pytest.raises(InvalidVolumeError, match="constant intensity"):
         run_inference(constant, "production", pipeline_run.paths, "cpu")
@@ -59,8 +69,15 @@ def test_trace_links_prediction_to_source(pipeline_run) -> None:  # type: ignore
     trace = trace_inference(pipeline_run.inference["inference_id"], pipeline_run.paths)
     assert trace.ok, render(trace)
     steps = [link["step"] for link in trace.chain]
-    assert steps == ["Inference", "Model", "Evaluation", "Experiment", "Dataset",
-                     "Preprocessing", "Source scan"]
+    assert steps == [
+        "Inference",
+        "Model",
+        "Evaluation",
+        "Experiment",
+        "Dataset",
+        "Preprocessing",
+        "Source scan",
+    ]
     source = trace.chain[-1]["details"]["provenance"]
     assert "split: test" in source  # the demo scan was never seen in training
     assert not any("TRAINING split" in w for w in trace.warnings)
@@ -90,7 +107,9 @@ def test_trace_detects_modified_prediction(pipeline_run, copied_paths: ArtifactP
 def test_trace_detects_edited_manifest(pipeline_run, copied_paths: ArtifactPaths) -> None:  # type: ignore[no-untyped-def]
     manifest_path = copied_paths.manifest(pipeline_run.experiment["dataset_version"])
     manifest = json.loads(manifest_path.read_text())
-    manifest["records"][0]["split"] = "train" if manifest["records"][0]["split"] != "train" else "test"
+    manifest["records"][0]["split"] = (
+        "train" if manifest["records"][0]["split"] != "train" else "test"
+    )
     manifest_path.write_text(json.dumps(manifest))
 
     trace = trace_inference(pipeline_run.inference["inference_id"], copied_paths)

@@ -62,6 +62,7 @@ def run_pipeline(root: Path) -> PipelineRun:
     records = load_manifest(paths, experiment["dataset_version"])["records"]
     test_scan = data_root / next(r for r in records if r["sample_id"] == test_case)["source_path"]
     inference = run_inference(test_scan, "production", paths, "cpu")
-    meshes = build_meshes(inference["inference_id"], paths,
-                          load_config(REPO_ROOT / "configs/mesh.yaml", MeshConfig))
+    meshes = build_meshes(
+        inference["inference_id"], paths, load_config(REPO_ROOT / "configs/mesh.yaml", MeshConfig)
+    )
     return PipelineRun(root, paths, data_root, experiment, evaluation, inference, meshes, test_scan)

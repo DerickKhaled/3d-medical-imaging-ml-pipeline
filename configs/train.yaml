@@ -1,5 +1,5 @@
 # Demo experiment: small 3D U-Net (~350k parameters) on the hippocampus dataset.
-# ~35 min on a 14-core laptop CPU (measured: ~2 s per batch of 4); a few minutes on a GPU.
+# ~55 min on a 14-core laptop CPU (measured: ~2.7 min per epoch); a few minutes on a GPU.
 data_config: configs/data.yaml
 preprocessing_config: configs/preprocessing.yaml
 model:

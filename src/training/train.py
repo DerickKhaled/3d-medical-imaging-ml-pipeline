@@ -44,13 +44,19 @@ def train(config_path: Path, paths: ArtifactPaths) -> dict[str, Any]:
     experiment, data_config, preprocessing = load_experiment(config_path)
     settings = experiment.training
     set_seed(settings.seed)
+    # Captured before training starts: the commit that ran, even if the tree changes meanwhile.
+    git_state = code_version()
     device = resolve_device(settings.device)
     use_amp = settings.amp and device.type == "cuda"
 
     manifest = build_and_save(data_config, paths)
     index = ensure_processed(manifest, data_config, preprocessing, paths)
     files = {
-        split: [sample_file(paths, index, s["sample_id"]) for s in index["samples"] if s["split"] == split]
+        split: [
+            sample_file(paths, index, s["sample_id"])
+            for s in index["samples"]
+            if s["split"] == split
+        ]
         for split in ("train", "val")
     }
     if settings.max_train_samples is not None:
@@ -62,8 +68,11 @@ def train(config_path: Path, paths: ArtifactPaths) -> dict[str, Any]:
     val_set = ProcessedVolumes(files["val"], augmentation=None, seed=settings.seed)
     generator = torch.Generator().manual_seed(settings.seed)
     train_loader = DataLoader(
-        train_set, batch_size=settings.batch_size, shuffle=True,
-        num_workers=settings.num_workers, generator=generator,
+        train_set,
+        batch_size=settings.batch_size,
+        shuffle=True,
+        num_workers=settings.num_workers,
+        generator=generator,
     )
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, num_workers=settings.num_workers)
 
@@ -80,7 +89,12 @@ def train(config_path: Path, paths: ArtifactPaths) -> dict[str, Any]:
     run_dir.mkdir(parents=True)
     log.info(
         "%s | %d train / %d val samples | %s parameters | device=%s amp=%s",
-        experiment_id, len(train_set), len(val_set), f"{count_parameters(model):,}", device, use_amp,
+        experiment_id,
+        len(train_set),
+        len(val_set),
+        f"{count_parameters(model):,}",
+        device,
+        use_amp,
     )
 
     checkpoint_metadata = _checkpoint_metadata(
@@ -109,17 +123,29 @@ def train(config_path: Path, paths: ArtifactPaths) -> dict[str, Any]:
         val_dice = _validate(model, val_loader, device, data_config.class_names)
         val_mean = float(np.mean(list(val_dice.values())))
         history.append(
-            {"epoch": epoch, "train_loss": float(np.mean(losses)), "val_mean_dice": val_mean,
-             "val_dice": val_dice, "lr": scheduler.get_last_lr()[0]}
+            {
+                "epoch": epoch,
+                "train_loss": float(np.mean(losses)),
+                "val_mean_dice": val_mean,
+                "val_dice": val_dice,
+                "lr": scheduler.get_last_lr()[0],
+            }
         )
-        log.info("epoch %3d | loss %.4f | val dice %.4f %s", epoch, np.mean(losses), val_mean,
-                 {k: round(v, 3) for k, v in val_dice.items()})
+        log.info(
+            "epoch %3d | loss %.4f | val dice %.4f %s",
+            epoch,
+            np.mean(losses),
+            val_mean,
+            {k: round(v, 3) for k, v in val_dice.items()},
+        )
 
         metadata = checkpoint_metadata | {"epoch": epoch, "val_mean_dice": val_mean}
         last_hash = save_checkpoint(run_dir / "last.pt", model, metadata)
         if val_mean > best["val_mean_dice"]:
             best = {
-                "epoch": epoch, "val_mean_dice": val_mean, "val_dice": val_dice,
+                "epoch": epoch,
+                "val_mean_dice": val_mean,
+                "val_dice": val_dice,
                 "checkpoint": "best.pt",
                 "checkpoint_hash": save_checkpoint(run_dir / "best.pt", model, metadata),
             }
@@ -140,7 +166,7 @@ def train(config_path: Path, paths: ArtifactPaths) -> dict[str, Any]:
         "postprocessing_config": experiment.postprocessing.model_dump(mode="json"),
         "data_config": data_config.model_dump(mode="json"),
         "random_seed": settings.seed,
-        "code_version": code_version(),
+        "code_version": git_state,
         "environment": {"torch": torch.__version__, "device": str(device), "amp": use_amp},
         "samples": {"train": len(train_set), "val": len(val_set)},
         "best_checkpoint": best,
@@ -151,8 +177,13 @@ def train(config_path: Path, paths: ArtifactPaths) -> dict[str, Any]:
         "timestamp": utc_now(),
     }
     write_json(run_dir / "experiment.json", record)
-    log.info("%s done | best epoch %d | val dice %.4f | %s",
-             experiment_id, best["epoch"], best["val_mean_dice"], run_dir)
+    log.info(
+        "%s done | best epoch %d | val dice %.4f | %s",
+        experiment_id,
+        best["epoch"],
+        best["val_mean_dice"],
+        run_dir,
+    )
     return record
 
 
