@@ -184,6 +184,20 @@ def _add_slice_view(plotter: pv.Plotter, scene: CaseScene, scale: float) -> None
             name="overlay",
             show_scalar_bar=False,
         )
+        if scene.expert is not None:
+            # The expert's drawing as a white outline, lifted slightly above the colour layer.
+            outline = scene.expert.extract_subset(extent).contour([0.5, 1.5], scalars="expert")
+            # The contour filter ignores the scan's direction matrix, so apply it here.
+            direction = np.asarray(scene.image.direction_matrix)
+            origin = np.asarray(scene.image.origin)
+            lift = direction[:, 2] * scene.image.spacing[2] * 0.6
+            outline.points = origin + (np.asarray(outline.points) - origin) @ direction.T + lift
+            plotter.add_mesh(
+                outline,
+                color="white",
+                line_width=max(2, int(3 * scale)),
+                name="expert",
+            )
 
     start = int(round(_segmentation_center_index(scene)[2]))
     show_slice(start)
@@ -198,8 +212,11 @@ def _add_slice_view(plotter: pv.Plotter, scene: CaseScene, scale: float) -> None
         style="modern",
         color=TEXT,
     )
+    title = "Scan + predicted segmentation (colour)"
+    if scene.expert is not None:
+        title += "\nWhite line = expert's drawing"
     plotter.add_text(
-        "Scan + predicted segmentation",
+        title,
         position="upper_left",
         font_size=int(12 * scale),
         color=TEXT,

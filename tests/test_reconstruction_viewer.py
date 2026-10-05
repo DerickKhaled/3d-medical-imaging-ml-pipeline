@@ -97,3 +97,18 @@ def test_viewer_renders_offscreen(pipeline_run, tmp_path: Path) -> None:  # type
     plotter.screenshot(str(out))
     plotter.close()
     assert out.stat().st_size > 10_000
+
+
+def test_viewer_shows_accuracy_against_expert(pipeline_run) -> None:  # type: ignore[no-untyped-def]
+    scene = load_case(pipeline_run.inference["inference_id"], pipeline_run.paths)
+    accuracy = scene.accuracy
+    assert accuracy["scan_split"] == "test"
+    assert accuracy["model_test_dice"] == pytest.approx(pipeline_run.evaluation["dice"])
+    case = next(
+        c
+        for c in pipeline_run.evaluation["cases"]
+        if c["source_hash"] == pipeline_run.inference["input_hash"]
+    )
+    for name, dice in accuracy["scan_dice_per_structure"].items():
+        assert dice == pytest.approx(case["per_class"][name]["dice"])  # same as the evaluation
+    assert scene.expert is not None
