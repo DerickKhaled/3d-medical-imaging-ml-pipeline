@@ -15,6 +15,8 @@ through the slices.
 from __future__ import annotations
 
 import argparse
+import ctypes
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -29,22 +31,42 @@ BACKGROUND = "#10182b"
 TEXT = "#e8ecf4"
 
 
+def _screen_setup() -> tuple[float, tuple[int, int]]:
+    """Return (display scale, window size in pixels).
+
+    On Windows with display scaling (e.g. 150%), VTK windows are stretched by the
+    system and look blurry. Asking for real pixels fixes that; fonts and buttons
+    are then multiplied by the scale so they keep their normal size.
+    """
+    if sys.platform != "win32":
+        return 1.0, (1600, 900)
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        scale = ctypes.windll.user32.GetDpiForSystem() / 96
+        width = ctypes.windll.user32.GetSystemMetrics(0)
+        height = ctypes.windll.user32.GetSystemMetrics(1)
+    except (AttributeError, OSError):
+        return 1.0, (1600, 900)
+    return scale, (int(width * 0.9), int(height * 0.85))
+
+
 def build_plotter(scene: CaseScene, off_screen: bool = False) -> pv.Plotter:
+    scale, window_size = (1.0, (1600, 900)) if off_screen else _screen_setup()
     plotter = pv.Plotter(
         shape=(1, 2),
-        window_size=(1600, 860),
+        window_size=list(window_size),
         off_screen=off_screen,
         title=f"3D Medical Imaging ML Pipeline - {scene.inference_id}",
     )
     plotter.set_background(BACKGROUND)
-    plotter.enable_anti_aliasing("ssaa")  # smooth edges instead of jagged pixels
-    _add_3d_view(plotter, scene)
-    _add_slice_view(plotter, scene)
+    plotter.enable_anti_aliasing("msaa")  # smooth 3D edges, keeps text sharp
+    _add_3d_view(plotter, scene, scale)
+    _add_slice_view(plotter, scene, scale)
     plotter.subplot(0, 0)
     return plotter
 
 
-def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
+def _add_3d_view(plotter: pv.Plotter, scene: CaseScene, scale: float) -> None:
     plotter.subplot(0, 0)
     actors = {
         name: plotter.add_mesh(
@@ -71,19 +93,24 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
     # One checkbox per structure, plus one for the scan slices.
     toggles = [(name, actors[name], scene.colors[name]) for name in scene.meshes]
     toggles.append(("scan slices", slice_actor, "#9aa3b5"))
+    box, row_height, margin = int(24 * scale), int(34 * scale), int(12 * scale)
+    label_x = margin + box + int(10 * scale)
+    font = int(8 * scale)
     for row, (label, actor, color) in enumerate(toggles):
-        y = 12 + row * 42
+        y = margin + row * row_height
         plotter.add_checkbox_button_widget(
             lambda visible, a=actor: a.SetVisibility(visible),
             value=True,
-            position=(12, y),
-            size=30,
+            position=(margin, y),
+            size=box,
             color_on=color,
             color_off="#3a4255",
         )
         info = scene.mesh_info.get(label)
         suffix = f"  ({info['mesh_volume_ml']:.2f} mL)" if info else ""
-        plotter.add_text(f"{label}{suffix}", position=(52, y + 4), font_size=10, color=TEXT)
+        plotter.add_text(
+            f"{label}{suffix}", position=(label_x, y + box // 6), font_size=font, color=TEXT
+        )
 
     def set_opacity(value: float) -> None:
         for actor in actors.values():
@@ -94,35 +121,38 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
         rng=[0.1, 1.0],
         value=1.0,
         title="Structure opacity",
-        pointa=(0.62, 0.08),
-        pointb=(0.95, 0.08),
+        pointa=(0.66, 0.08),
+        pointb=(0.96, 0.08),
         style="modern",
         color=TEXT,
     )
 
-    distance_text = plotter.add_text("", position="lower_right", font_size=10, color="#ffd166")
+    distance_text = plotter.add_text("", position="lower_right", font_size=font, color="#ffd166")
     ruler = plotter.add_measurement_widget(
         lambda a, b, d: distance_text.SetText(3, f"distance: {d:.1f} mm"), color="#ffd166"
     )
     ruler.Off()
-    y = 12 + len(toggles) * 42
+    y = margin + len(toggles) * row_height
     plotter.add_checkbox_button_widget(
         lambda on: ruler.On() if on else ruler.Off(),
         value=False,
-        position=(12, y),
-        size=30,
+        position=(margin, y),
+        size=box,
         color_on="#ffd166",
         color_off="#3a4255",
     )
-    plotter.add_text("Measure (click two points)", position=(52, y + 4), font_size=10, color=TEXT)
-
     plotter.add_text(
+        "Measure (click two points)", position=(label_x, y + box // 6), font_size=font, color=TEXT
+    )
+
+    info_text = plotter.add_text(
         "\n".join(scene.summary_lines()),
         position="upper_left",
-        font_size=9,
+        font_size=int(10 * scale),
         color=TEXT,
         font="courier",
     )
+    info_text.GetTextProperty().SetBold(True)  # thin monospace text is hard to read
     plotter.add_axes(color=TEXT, viewport=(0.82, 0.78, 1.0, 1.0))
     plotter.camera_position = "iso"
     if scene.meshes:  # frame the anatomy, not the whole scan
@@ -132,7 +162,7 @@ def _add_3d_view(plotter: pv.Plotter, scene: CaseScene) -> None:
         plotter.reset_camera()
 
 
-def _add_slice_view(plotter: pv.Plotter, scene: CaseScene) -> None:
+def _add_slice_view(plotter: pv.Plotter, scene: CaseScene, scale: float) -> None:
     plotter.subplot(0, 1)
     nx, ny, nz = scene.image.dimensions
     colors = [scene.colors[name] for name in scene.meshes] or ["#e8743b"]
@@ -169,7 +199,10 @@ def _add_slice_view(plotter: pv.Plotter, scene: CaseScene) -> None:
         color=TEXT,
     )
     plotter.add_text(
-        "Scan + predicted segmentation", position="upper_left", font_size=11, color=TEXT
+        "Scan + predicted segmentation",
+        position="upper_left",
+        font_size=int(12 * scale),
+        color=TEXT,
     )
     plotter.view_xy()
     plotter.reset_camera()
