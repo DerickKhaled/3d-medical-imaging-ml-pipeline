@@ -29,6 +29,7 @@ include = ["src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # the project root, so `import src` works however pytest is started
 markers = [
     "gui: needs an OpenGL context (skipped in CI)",
     "slow: end-to-end pipeline run on synthetic data (~20 s on CPU)",
