@@ -43,8 +43,9 @@ by ID and by file hash, so you can follow any output back to where it came from.
 Trained on my laptop CPU (no GPU), 20 epochs, about 55 minutes.
 The model has 350,827 parameters.
 
-| | Scans | Mean Dice | Anterior | Posterior |
-|---|---|---|---|---|
+|  Scans | Mean Dice | Anterior | Posterior |
+---------|-----------|----------|-----------|----------------
+
 | Validation | 26 | 0.876 | 0.884 | 0.869 |
 | Test (never seen in training) | 40 | 0.877 | 0.883 | 0.872 |
 
