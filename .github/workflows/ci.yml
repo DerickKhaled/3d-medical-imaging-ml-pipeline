@@ -36,4 +36,11 @@ jobs:
       # train (2 epochs, tiny U-Net) -> register -> evaluate -> promote -> infer -> mesh -> trace.
       # No real dataset and no expensive training in CI.
       - name: Tests
-        run: python -m pytest -q -m "not gui" -ra
+        run: python -m pytest -q -m "not gui" -ra 2>&1 | tee pytest.log
+
+      # If tests fail, show the end of the output as an annotation on the run summary page.
+      - name: Show test failure
+        if: failure()
+        run: |
+          message=$(tail -n 40 pytest.log | sed -e 's/%/%25/g' | sed -e ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error title=pytest output::${message}"
